@@ -1,0 +1,217 @@
+package com.example.myapplication.service;
+
+import static com.example.myapplication.enums.EventBusEnum.BLE_CONNECT;
+import static com.example.myapplication.enums.EventBusEnum.BLE_INIT_ERROR;
+import static com.example.myapplication.enums.EventBusEnum.NOT_ENABLE_LE;
+import static com.example.myapplication.enums.EventBusEnum.NOT_SUPPORT_LE;
+
+import android.annotation.SuppressLint;
+import android.app.Service;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanResult;
+import android.content.Intent;
+import android.os.Binder;
+import android.os.IBinder;
+import android.text.TextUtils;
+
+import androidx.annotation.Nullable;
+
+import com.example.myapplication.entity.BleDeviceInfo;
+import com.example.myapplication.entity.CharacteristicDomain;
+import com.example.myapplication.entity.EventBusMsg;
+import com.example.myapplication.entity.ServicesPropertiesDomain;
+import com.example.myapplication.enums.DeviceConnStatEnum;
+import com.example.myapplication.enums.EventBusEnum;
+import com.example.myapplication.enums.ServiceNameEnum;
+import com.example.myapplication.util.BleDeviceUtil;
+import com.example.myapplication.util.LogUtil;
+import com.google.gson.Gson;
+
+import org.greenrobot.eventbus.EventBus;
+
+import java.security.Provider;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class BleService extends Service {
+
+    private Map<String, BluetoothDevice> bleDeviceMap = new ConcurrentHashMap<>();
+
+    private Map<String, BleDeviceInfo> bleDeviceInfoMap = new ConcurrentHashMap<>();
+
+    private BluetoothAdapter bluetoothAdapter;
+
+    //low power ble
+    private BluetoothLeScanner bluetoothLeScanner;
+    private boolean bleIsInit=false;
+
+
+    private BleDeviceUtil bleDeviceUtil = null;
+
+    public boolean isBleIsInit() {
+        return bleIsInit;
+    }
+
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        initBleConfig();
+    }
+
+    public DeviceConnStatEnum getBleConnect() {
+        if (bleDeviceUtil == null) return DeviceConnStatEnum.DISCONNECTED;
+        return bleDeviceUtil.getConnectStat();
+    }
+
+    /**
+     * 初始化蓝牙扫描相关参数
+     */
+    public void initBleConfig() {
+        try {
+            BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
+            bluetoothAdapter = bluetoothManager.getAdapter();
+            if (bluetoothAdapter == null) {
+                EventBus.getDefault().post(new EventBusMsg(NOT_SUPPORT_LE, null));
+                return;
+            }
+            if (!bluetoothAdapter.isEnabled()) {
+                EventBus.getDefault().post(new EventBusMsg(NOT_ENABLE_LE, null));
+                return;
+            }
+            bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+        } catch (Exception e) {
+            e.printStackTrace();
+            EventBus.getDefault().post(new EventBusMsg(BLE_INIT_ERROR, e.getMessage()));
+        }
+    }
+
+
+    @SuppressLint("MissingPermission")
+    public void startBleScan() {
+        bleDeviceMap.clear();
+        bleDeviceInfoMap.clear();
+        if (bluetoothLeScanner == null) {
+            initBleConfig();
+        }
+        if (bluetoothLeScanner != null) {
+            bluetoothLeScanner.stopScan(scanCallback);
+            bluetoothLeScanner.startScan(scanCallback);
+        }
+    }
+
+    public ScanCallback scanCallback = new ScanCallback() {
+        @SuppressLint("MissingPermission")
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            super.onScanResult(callbackType, result);
+            BluetoothDevice device = result.getDevice();
+            String bleName = device.getName();
+            if (!TextUtils.isEmpty(bleName)) {
+                bleName = bleName.trim();
+//                if (!bleName.startsWith("OV")) {
+//                    return;
+//                }
+                LogUtil.debug(device.getAddress() + "," + device.getName());
+                String typeStr = "Unknown";
+                if (device.getType() == 1) {
+                    typeStr = "Classic";
+                } else if (device.getType() == 2) {
+                    typeStr = "Low Energy";
+                } else if (device.getType() == 3) {
+                    typeStr = "DUAL";
+                }
+                BleDeviceInfo checkRecord = new BleDeviceInfo();
+                checkRecord.setMacAddress(device.getAddress());
+                checkRecord.setFullName(bleName);
+                String[] nameArr = bleName.split(" ");
+                if (nameArr.length >= 3) {
+                    checkRecord.setProductName(nameArr[1]);
+                    checkRecord.setProductId(nameArr[2]);
+                } else if (nameArr.length == 2) {
+                    checkRecord.setProductName(nameArr[1]);
+                    checkRecord.setProductId("");
+                }
+                checkRecord.setRssi(result.getRssi());
+                bleDeviceMap.put(device.getAddress(), device);
+                bleDeviceInfoMap.put(device.getAddress(), checkRecord);
+                EventBus.getDefault().post(new EventBusMsg(EventBusEnum.BLE_FIND,checkRecord));
+            }
+        }
+
+        @Override
+        public void onBatchScanResults(List<ScanResult> results) {
+            super.onBatchScanResults(results);
+            LogUtil.debug("ScanCallback==>onBatchScanResults");
+        }
+
+        @Override
+        public void onScanFailed(int errorCode) {
+            super.onScanFailed(errorCode);
+            LogUtil.error("ScanCallback==>onScanFailed:" + errorCode);
+        }
+    };
+
+    @SuppressLint("MissingPermission")
+    public void stopScan() {
+        try {
+            bluetoothLeScanner.stopScan(scanCallback);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public BleDeviceUtil getBleDeviceUtil() {
+        return bleDeviceUtil;
+    }
+
+    public BleDeviceUtil connectBle(String mac) throws Exception {
+        if (bleDeviceUtil != null) {
+            if (bleDeviceUtil.getBluetoothDevice().getAddress().equalsIgnoreCase(mac) && bleDeviceUtil.getConnectStat() == DeviceConnStatEnum.CONNECTED) {
+                return bleDeviceUtil;
+            } else {
+                bleDeviceUtil.destroy();
+                bleDeviceUtil = null;
+            }
+        }
+        bleIsInit=false;
+        BluetoothDevice bleDevice = bleDeviceMap.get(mac);
+        if (bleDevice != null) {
+            bleDeviceUtil = new BleDeviceUtil(bleDevice, BleService.this);
+            if (bleDeviceUtil.connectGatt() == DeviceConnStatEnum.CONNECTED) {
+                EventBus.getDefault().post(new EventBusMsg<>(BLE_CONNECT, null));
+            } else {
+                bleDeviceUtil.destroy();
+                bleDeviceUtil = null;
+            }
+        }
+        return bleDeviceUtil;
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return new BleServiceBinder();
+    }
+
+
+    public class BleServiceBinder extends Binder {
+        public BleService getService() {
+            return BleService.this;
+        }
+    }
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+}

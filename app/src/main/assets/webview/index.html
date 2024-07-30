@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title></title>
+		<!-- <script src="https://unpkg.com/vue@next"></script> -->
+		<script src="js/v3.2.8/vue.global.prod.js" type="text/javascript" charset="utf-8"></script>
+		<script type="text/javascript" src="js/vconsole.min.js"></script>
+
+	<body
+		style="position: absolute;top: 0;left:0;bottom: 0;right:0;display: flex;flex-direction: column;justify-content: space-around;align-items: center;align-content: center;background-color: #000000;">
+
+		<div id="app" style="flex: 1;height: 80%; display: flex;flex-direction: column;flex-wrap: wrap;">
+
+			<button style="width: 100px;height: 100px;" @click="this.startBleScan">startBleScan</button>
+			
+			<button style="width: 100px;height: 100px;margin-top: 10px;" @click="this.stopBleScan">stopBleScan</button>
+
+			<button style="width: 100px;height: 100px;margin-top: 10px;" @click="this.toastMsg">toastMsg</button>
+			
+			<button style="width: 100px;height: 100px;margin-top: 10px;" @click="this.startQrCode">startQrCode</button>
+
+
+		</div>
+	</body>
+	<script>
+		const App = {
+			data() {
+				return {
+
+				}
+			},
+			mounted() {},
+			created() {
+				
+				this.connectWebViewJavascriptBridge(function(bridge) {
+					//
+					bridge.init(function(message, responseCallback) {
+						responseCallback("js success!");
+					});
+
+					/////////////////////////////////Android Call JS: Registering JavaScript methods for Android to call, while you can also declare more methods.//////////////////////////////////
+					bridge.registerHandler("print", function(data, responseCallback) {
+						console.info(data);
+						responseCallback(data);
+					});
+
+					bridge.registerHandler("findBleDeviceCallBack", function(data, responseCallback) {
+						console.info(data);
+						responseCallback(data);
+					});
+					
+					bridge.registerHandler("scanQrcodeResultCallBack", function(data, responseCallback) {
+						console.info(data);
+						responseCallback(data);
+					});
+					/////////////////////////////////Android Call JS: Registering JavaScript methods for Android to call, while you can also declare more methods.//////////////////////////////////
+
+
+
+				})
+
+				//If calling Android’s method immediately after initialization, it needs a delay of about 500ms
+				
+				// setTimeout(function() {
+				// 	toastMsg();
+				// }, 500); 
+
+
+
+			},
+			methods: {
+
+				/////////////////////////////////JS Call Android////////////////////////////////
+				startBleScan() {
+					window.WebViewJavascriptBridge.callHandler(
+						'startBleScan', "",
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				
+				stopBleScan() {
+					window.WebViewJavascriptBridge.callHandler(
+						'stopBleScan', "",
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				
+				
+				toastMsg() {
+					window.WebViewJavascriptBridge.callHandler(
+						'toastMsg', "toastMsg",
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				
+				startQrCode(){
+					window.WebViewJavascriptBridge.callHandler(
+						'startQrCodeScan', 999,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+
+			/////////////////////////////////JS Call Android////////////////////////////////
+				/////////////////////////////////JS Call Android:  end
+
+				//JS注册事件监听
+				connectWebViewJavascriptBridge(callback) {
+					if (window.WebViewJavascriptBridge) {
+						callback(WebViewJavascriptBridge)
+					} else {
+						document.addEventListener(
+							'WebViewJavascriptBridgeReady',
+							function() {
+								callback(WebViewJavascriptBridge)
+							},
+							false
+						);
+					}
+				}
+
+			}
+
+		};
+		Vue.createApp(App).mount('#app');
+	</script>
+	</body>
+</html>
