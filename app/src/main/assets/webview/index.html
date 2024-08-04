@@ -7,18 +7,33 @@
 		<script src="js/v3.2.8/vue.global.prod.js" type="text/javascript" charset="utf-8"></script>
 		<script type="text/javascript" src="js/vconsole.min.js"></script>
 
-	<body
-		style="position: absolute;top: 0;left:0;bottom: 0;right:0;display: flex;flex-direction: column;justify-content: space-around;align-items: center;align-content: center;background-color: #000000;">
+	<body style="width: 100%;height:100%;background-color: #000000;">
+		<div id="app"
+			style="flex: 1;height: 80%; display: flex;flex-direction: column;flex-wrap: wrap;justify-content: center;align-items: center;justify-items: center;">
 
-		<div id="app" style="flex: 1;height: 80%; display: flex;flex-direction: column;flex-wrap: wrap;">
 
-			<button style="width: 100px;height: 100px;" @click="this.startBleScan">startBleScan</button>
-			
-			<button style="width: 100px;height: 100px;margin-top: 10px;" @click="this.stopBleScan">stopBleScan</button>
+			<div
+				style="width: 100%;height: 50px;display: flex; flex-direction: row;justify-content: center;align-items: center;margin-top: 10px;">
+				<input v-model="keyword" style="width: 200px;height: 50px;" placeholder="please input macAddress" />
+				<button style="width: 200px;height: 50px;" @click="this.startBleScan">startBleScan</button>
+			</div>
 
-			<button style="width: 100px;height: 100px;margin-top: 10px;" @click="this.toastMsg">toastMsg</button>
-			
-			<button style="width: 100px;height: 100px;margin-top: 10px;" @click="this.startQrCode">startQrCode</button>
+
+			<button style="width: 200px;height: 50px;margin-top: 10px;" @click="this.stopBleScan">stopBleScan</button>
+
+			<button style="width: 200px;height: 50px;margin-top: 10px;" @click="this.toastMsg">toastMsg</button>
+
+			<button style="width: 200px;height: 50px;margin-top: 10px;" @click="this.startQrCode">startQrCode</button>
+
+			<button style="width: 200px;height: 50px;margin-top: 10px;"
+				@click="this.jump2MainActivity">jump2MainActivity</button>
+
+			<div
+				style="width: 100%;height: 50px;display: flex; flex-direction: row;justify-content: center;align-items: center;margin-top: 10px;">
+				<input v-model="macAddress" style="width: 200px;height: 50px;" placeholder="please input macAddress" />
+				<button style="width: 200px;height: 50px;"
+					@click="this.connBleByMacAddress">connBleByMacAddress</button>
+			</div>
 
 
 		</div>
@@ -27,12 +42,54 @@
 		const App = {
 			data() {
 				return {
-
+					macAddress: "FF:23:12:07:00:01",
+					keyword: "OVES",
+					characteristic:{
+						serviceUUID:"",
+						characteristicUUID:"",
+						macAddress:"",
+					},
+					mainConfig: {
+						//"barBackgroundColor": "#A3A6A1",
+						"itemBackgroundColor": "#ffffff",
+						"itemSelBackgroundColor": "#000000",
+						"itemSelTextColor": "#202ED1",
+						"itemTextColor": "#000000",
+						"items": [{
+								"contentUrl": "https://www.baidu.com/",
+								"iconSelUrl": "https://tse4-mm.cn.bing.net/th/id/OIP-C.MD5FdM4LTeNRm9dUmRasVgHaHa?rs=1&pid=ImgDetMain",
+								"iconUrl": "https://tse4-mm.cn.bing.net/th/id/OIP-C.MD5FdM4LTeNRm9dUmRasVgHaHa?rs=1&pid=ImgDetMain",
+								"itemText": "baidu",
+								"sortIndex": 0
+							},
+							{
+								"contentUrl": "https://www.sougou.com/",
+								"iconSelUrl": "https://tse4-mm.cn.bing.net/th/id/OIP-C.MD5FdM4LTeNRm9dUmRasVgHaHa?rs=1&pid=ImgDetMain",
+								"iconUrl": "https://tse4-mm.cn.bing.net/th/id/OIP-C.MD5FdM4LTeNRm9dUmRasVgHaHa?rs=1&pid=ImgDetMain",
+								"itemText": "sougou",
+								"sortIndex": 3
+							},
+							{
+								"contentUrl": "https://cn.bing.com/",
+								"iconSelUrl": "https://tse4-mm.cn.bing.net/th/id/OIP-C.MD5FdM4LTeNRm9dUmRasVgHaHa?rs=1&pid=ImgDetMain",
+								"iconUrl": "https://tse4-mm.cn.bing.net/th/id/OIP-C.MD5FdM4LTeNRm9dUmRasVgHaHa?rs=1&pid=ImgDetMain",
+								"itemText": "bing",
+								"sortIndex": 1
+							},
+							{
+								"contentUrl": "https://www.google.com/",
+								"iconSelUrl": "https://tse4-mm.cn.bing.net/th/id/OIP-C.MD5FdM4LTeNRm9dUmRasVgHaHa?rs=1&pid=ImgDetMain",
+								"iconUrl": "https://tse4-mm.cn.bing.net/th/id/OIP-C.MD5FdM4LTeNRm9dUmRasVgHaHa?rs=1&pid=ImgDetMain",
+								"itemText": "google",
+								"sortIndex": 2
+							}
+						]
+					},
 				}
 			},
 			mounted() {},
 			created() {
-				
+
 				this.connectWebViewJavascriptBridge(function(bridge) {
 					//
 					bridge.init(function(message, responseCallback) {
@@ -40,6 +97,7 @@
 					});
 
 					/////////////////////////////////Android Call JS: Registering JavaScript methods for Android to call, while you can also declare more methods.//////////////////////////////////
+
 					bridge.registerHandler("print", function(data, responseCallback) {
 						console.info(data);
 						responseCallback(data);
@@ -48,11 +106,33 @@
 					bridge.registerHandler("findBleDeviceCallBack", function(data, responseCallback) {
 						console.info(data);
 						responseCallback(data);
+						
 					});
-					
+
 					bridge.registerHandler("scanQrcodeResultCallBack", function(data, responseCallback) {
 						console.info(data);
 						responseCallback(data);
+					});
+
+					bridge.registerHandler("bleConnectSuccessCallBack", function(macAddress, responseCallback) {
+						console.info(macAddress);
+						responseCallback(macAddress);
+						
+						window.WebViewJavascriptBridge.callHandler(
+							'initBleData', macAddress,
+							function(responseData) {
+								console.info(responseData);
+							}
+						);
+					});
+					bridge.registerHandler("bleConnectFailCallBack", function(macAddress, responseCallback) {
+						console.info(macAddress);
+						responseCallback(macAddress);
+					});
+
+					bridge.registerHandler("bleInitDataCallBack", function(data, responseCallback) {
+						console.info(data);
+						responseCallback(macAddress);
 					});
 					/////////////////////////////////Android Call JS: Registering JavaScript methods for Android to call, while you can also declare more methods.//////////////////////////////////
 
@@ -61,7 +141,7 @@
 				})
 
 				//If calling Android’s method immediately after initialization, it needs a delay of about 500ms
-				
+
 				// setTimeout(function() {
 				// 	toastMsg();
 				// }, 500); 
@@ -70,17 +150,15 @@
 
 			},
 			methods: {
-
 				/////////////////////////////////JS Call Android////////////////////////////////
 				startBleScan() {
 					window.WebViewJavascriptBridge.callHandler(
-						'startBleScan', "",
+						'startBleScan', this.keyword,
 						function(responseData) {
 							console.info(responseData);
 						}
 					);
 				},
-				
 				stopBleScan() {
 					window.WebViewJavascriptBridge.callHandler(
 						'stopBleScan', "",
@@ -89,8 +167,42 @@
 						}
 					);
 				},
+				connBleByMacAddress() {
+					window.WebViewJavascriptBridge.callHandler(
+						'connBleByMacAddress', this.macAddress,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				initBleData() {
+					window.WebViewJavascriptBridge.callHandler(
+						'initBleData', this.macAddress,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				
+				readBleCharacteristic() {
+					window.WebViewJavascriptBridge.callHandler(
+						'readBleCharacteristic', this.characteristic,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
 				
 				
+
+				getScannedDevices() {
+					window.WebViewJavascriptBridge.callHandler(
+						'getScannedDevices', "",
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
 				toastMsg() {
 					window.WebViewJavascriptBridge.callHandler(
 						'toastMsg', "toastMsg",
@@ -99,8 +211,8 @@
 						}
 					);
 				},
-				
-				startQrCode(){
+
+				startQrCode() {
 					window.WebViewJavascriptBridge.callHandler(
 						'startQrCodeScan', 999,
 						function(responseData) {
@@ -108,8 +220,15 @@
 						}
 					);
 				},
+				jump2MainActivity() {
+					window.WebViewJavascriptBridge.callHandler(
+						'jump2MainActivity', JSON.stringify(this.mainConfig),
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
 
-			/////////////////////////////////JS Call Android////////////////////////////////
 				/////////////////////////////////JS Call Android:  end
 
 				//JS注册事件监听

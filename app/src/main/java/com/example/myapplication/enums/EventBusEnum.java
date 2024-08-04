@@ -13,7 +13,9 @@ public enum EventBusEnum {
     BLE_INIT_ERROR,
     MQTT_DATA_REV,
     PANE_CONFIG,
-    BLE_CONNECT;
+    BLE_CONNECT,
+    BLE_DISCONNECT,
+    BLE_CONNECT_FAIL,
 
 
 }

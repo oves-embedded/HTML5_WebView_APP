@@ -7,39 +7,18 @@ public class BleDeviceInfo {
 
     private int rssi;
     private String macAddress;
-    private long timestampNanos;
-    private String deviceType;
-    private int majorDeviceClass;
-    private boolean isConnected;
-    private String fullName;
-    private String productName;
-    private String productId;
+    private String name;
 
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getProductName() {
-        return productName;
-    }
-
-    public void setProductName(String productName) {
-        this.productName = productName;
-    }
-
-    public String getProductId() {
-        return productId;
-    }
-
-    public void setProductId(String productId) {
-        this.productId = productId;
-    }
 
     public BleDeviceInfo() {
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public int getRssi() {
@@ -58,37 +37,6 @@ public class BleDeviceInfo {
         this.macAddress = macAddress;
     }
 
-    public long getTimestampNanos() {
-        return timestampNanos;
-    }
-
-    public void setTimestampNanos(long timestampNanos) {
-        this.timestampNanos = timestampNanos;
-    }
-
-    public String getDeviceType() {
-        return deviceType;
-    }
-
-    public void setDeviceType(String deviceType) {
-        this.deviceType = deviceType;
-    }
-
-    public int getMajorDeviceClass() {
-        return majorDeviceClass;
-    }
-
-    public void setMajorDeviceClass(int majorDeviceClass) {
-        this.majorDeviceClass = majorDeviceClass;
-    }
-
-    public boolean isConnected() {
-        return isConnected;
-    }
-
-    public void setConnected(boolean connected) {
-        isConnected = connected;
-    }
 
 
     @Override

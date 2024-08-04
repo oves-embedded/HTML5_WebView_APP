@@ -1,4 +1,4 @@
-package com.example.myapplication.entity;
+package com.example.myapplication.entity.event;
 
 
 import com.example.myapplication.enums.EventBusEnum;

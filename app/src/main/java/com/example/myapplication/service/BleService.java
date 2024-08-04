@@ -1,6 +1,7 @@
 package com.example.myapplication.service;
 
 import static com.example.myapplication.enums.EventBusEnum.BLE_CONNECT;
+import static com.example.myapplication.enums.EventBusEnum.BLE_CONNECT_FAIL;
 import static com.example.myapplication.enums.EventBusEnum.BLE_INIT_ERROR;
 import static com.example.myapplication.enums.EventBusEnum.NOT_ENABLE_LE;
 import static com.example.myapplication.enums.EventBusEnum.NOT_SUPPORT_LE;
@@ -14,6 +15,8 @@ import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
 import android.content.Intent;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Binder;
 import android.os.IBinder;
 import android.text.TextUtils;
@@ -21,28 +24,20 @@ import android.text.TextUtils;
 import androidx.annotation.Nullable;
 
 import com.example.myapplication.entity.BleDeviceInfo;
-import com.example.myapplication.entity.CharacteristicDomain;
-import com.example.myapplication.entity.EventBusMsg;
-import com.example.myapplication.entity.ServicesPropertiesDomain;
+import com.example.myapplication.entity.event.EventBusMsg;
 import com.example.myapplication.enums.DeviceConnStatEnum;
 import com.example.myapplication.enums.EventBusEnum;
-import com.example.myapplication.enums.ServiceNameEnum;
 import com.example.myapplication.util.BleDeviceUtil;
 import com.example.myapplication.util.LogUtil;
-import com.google.gson.Gson;
 
 import org.greenrobot.eventbus.EventBus;
 
-import java.security.Provider;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class BleService extends Service {
-
+    private LocationManager mLocationManager;
     private Map<String, BluetoothDevice> bleDeviceMap = new ConcurrentHashMap<>();
 
     private Map<String, BleDeviceInfo> bleDeviceInfoMap = new ConcurrentHashMap<>();
@@ -51,8 +46,7 @@ public class BleService extends Service {
 
     //low power ble
     private BluetoothLeScanner bluetoothLeScanner;
-    private boolean bleIsInit=false;
-
+    private boolean bleIsInit = false;
 
     private BleDeviceUtil bleDeviceUtil = null;
 
@@ -60,17 +54,23 @@ public class BleService extends Service {
         return bleIsInit;
     }
 
+    private LocationListener locationListener;
+
+    private String bleKeyword = "";
 
     @Override
     public void onCreate() {
         super.onCreate();
-
         initBleConfig();
     }
 
     public DeviceConnStatEnum getBleConnect() {
         if (bleDeviceUtil == null) return DeviceConnStatEnum.DISCONNECTED;
         return bleDeviceUtil.getConnectStat();
+    }
+
+    public Map<String, BleDeviceInfo> getBleDeviceInfoMap() {
+        return bleDeviceInfoMap;
     }
 
     /**
@@ -97,7 +97,8 @@ public class BleService extends Service {
 
 
     @SuppressLint("MissingPermission")
-    public void startBleScan() {
+    public void startBleScan(String keyword) {
+        this.bleKeyword=keyword;
         bleDeviceMap.clear();
         bleDeviceInfoMap.clear();
         if (bluetoothLeScanner == null) {
@@ -118,9 +119,9 @@ public class BleService extends Service {
             String bleName = device.getName();
             if (!TextUtils.isEmpty(bleName)) {
                 bleName = bleName.trim();
-//                if (!bleName.startsWith("OV")) {
-//                    return;
-//                }
+                if (!TextUtils.isEmpty(bleKeyword) && !bleName.contains(bleKeyword)) {
+                    return;
+                }
                 LogUtil.debug(device.getAddress() + "," + device.getName());
                 String typeStr = "Unknown";
                 if (device.getType() == 1) {
@@ -132,19 +133,12 @@ public class BleService extends Service {
                 }
                 BleDeviceInfo checkRecord = new BleDeviceInfo();
                 checkRecord.setMacAddress(device.getAddress());
-                checkRecord.setFullName(bleName);
-                String[] nameArr = bleName.split(" ");
-                if (nameArr.length >= 3) {
-                    checkRecord.setProductName(nameArr[1]);
-                    checkRecord.setProductId(nameArr[2]);
-                } else if (nameArr.length == 2) {
-                    checkRecord.setProductName(nameArr[1]);
-                    checkRecord.setProductId("");
-                }
+                checkRecord.setName(bleName);
                 checkRecord.setRssi(result.getRssi());
+
                 bleDeviceMap.put(device.getAddress(), device);
                 bleDeviceInfoMap.put(device.getAddress(), checkRecord);
-                EventBus.getDefault().post(new EventBusMsg(EventBusEnum.BLE_FIND,checkRecord));
+                EventBus.getDefault().post(new EventBusMsg(EventBusEnum.BLE_FIND, checkRecord));
             }
         }
 
@@ -176,22 +170,19 @@ public class BleService extends Service {
 
     public BleDeviceUtil connectBle(String mac) throws Exception {
         if (bleDeviceUtil != null) {
-            if (bleDeviceUtil.getBluetoothDevice().getAddress().equalsIgnoreCase(mac) && bleDeviceUtil.getConnectStat() == DeviceConnStatEnum.CONNECTED) {
-                return bleDeviceUtil;
-            } else {
                 bleDeviceUtil.destroy();
                 bleDeviceUtil = null;
-            }
         }
-        bleIsInit=false;
+        bleIsInit = false;
         BluetoothDevice bleDevice = bleDeviceMap.get(mac);
         if (bleDevice != null) {
             bleDeviceUtil = new BleDeviceUtil(bleDevice, BleService.this);
             if (bleDeviceUtil.connectGatt() == DeviceConnStatEnum.CONNECTED) {
-                EventBus.getDefault().post(new EventBusMsg<>(BLE_CONNECT, null));
+                EventBus.getDefault().post(new EventBusMsg<>(BLE_CONNECT, mac));
             } else {
                 bleDeviceUtil.destroy();
                 bleDeviceUtil = null;
+                EventBus.getDefault().post(new EventBusMsg<>(BLE_CONNECT_FAIL, mac));
             }
         }
         return bleDeviceUtil;
@@ -209,9 +200,17 @@ public class BleService extends Service {
             return BleService.this;
         }
     }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         return super.onStartCommand(intent, flags, startId);
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (mLocationManager != null && locationListener != null) {
+            mLocationManager.removeUpdates(locationListener);
+        }
+    }
 }

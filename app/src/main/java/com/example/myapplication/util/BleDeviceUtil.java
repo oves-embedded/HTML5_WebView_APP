@@ -2,6 +2,9 @@ package com.example.myapplication.util;
 
 import static android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY;
 
+import static com.example.myapplication.enums.EventBusEnum.BLE_CONNECT;
+import static com.example.myapplication.enums.EventBusEnum.BLE_DISCONNECT;
+
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -19,9 +22,13 @@ import com.example.myapplication.constants.Result;
 import com.example.myapplication.entity.CharacteristicDomain;
 import com.example.myapplication.entity.DescriptorDomain;
 import com.example.myapplication.entity.ServicesPropertiesDomain;
+import com.example.myapplication.entity.event.BleStatus;
+import com.example.myapplication.entity.event.EventBusMsg;
 import com.example.myapplication.enums.DeviceConnStatEnum;
 import com.example.myapplication.enums.ServiceNameEnum;
 import com.google.gson.Gson;
+
+import org.greenrobot.eventbus.EventBus;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -385,7 +392,6 @@ public class BleDeviceUtil {
         public void onPhyRead(BluetoothGatt gatt, int txPhy, int rxPhy, int status) {
             super.onPhyRead(gatt, txPhy, rxPhy, status);
             LogUtil.debug("BluetoothGattCallback onPhyRead");
-
         }
 
         @SuppressLint("MissingPermission")
@@ -396,6 +402,10 @@ public class BleDeviceUtil {
             if (newState == BluetoothGattServer.STATE_CONNECTED) {
                 connected = DeviceConnStatEnum.CONNECTED;
                 gatt.discoverServices();
+                try {
+                    setMtu(64);
+                } catch (Exception e) {
+                }
             } else {//蓝牙断开
                 connected = DeviceConnStatEnum.DISCONNECTED;
             }
@@ -488,12 +498,13 @@ public class BleDeviceUtil {
             String characteristicUUID = characteristic.getUuid().toString();
             String serviceUUID = characteristic.getService().getUuid().toString();
             CharacteristicDomain characteristicDataDto = serviceDataDtoMap.get(serviceUUID).getCharacterMap().get(characteristicUUID);
-            LogUtil.debug("BluetoothGattCallback onCharacteristicRead  " + (characteristicDataDto.getName() != null ? characteristicDataDto.getName() : "?") + "   :" + ByteUtil.bytes2HexString(characteristic.getValue()));
 
             try {
                 if (characteristic.getValue() == null || characteristic.getValue().length <= 0) {
                     LogUtil.debug("BluetoothGattCallback onCharacteristicRead：value is null");
                     return;
+                }else{
+                    LogUtil.debug("BluetoothGattCallback onCharacteristicRead  " + (characteristicDataDto.getName() != null ? characteristicDataDto.getName() : "?") + "   :" + ByteUtil.bytes2HexString(characteristic.getValue()));
                 }
                 characteristicDataDto.setValues(characteristic.getValue());
                 characteristicDataDto.setRealVal(DataConvert.convert2Obj(characteristicDataDto.getValues(), characteristicDataDto.getValType()));

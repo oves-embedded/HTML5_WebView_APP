@@ -42,12 +42,19 @@ public class Result<T> implements Serializable {
     }
 
     public static <T> Result<T> fail() {
-
         return new Result<>(RetCode.FAIL.getCode(), RetCode.FAIL.getDesc(), null);
     }
 
     public static <T> Result<T> fail(RetCode retCode) {
         return new Result<>(retCode.getCode(), retCode.getDesc(), null);
+    }
+
+    public static <T> Result<T> fail(RetCode retCode,T respData) {
+        return new Result<>(retCode.getCode(), retCode.getDesc(), respData);
+    }
+
+    public static <T> Result<T> fail(String respCode,String respDesc,T respData) {
+        return new Result<>(respCode, respDesc, respData);
     }
 
     public static <T> Result<T> fail(String errMsg) {
