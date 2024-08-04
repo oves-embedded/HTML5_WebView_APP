@@ -23,8 +23,6 @@ import java.util.List;
 
 public class WebViewActivity extends BaseWebViewActivity {
 
-    private WebViewJavascriptBridge jsBridge;
-
 
     private Gson gson = new Gson();
 
@@ -91,7 +89,6 @@ public class WebViewActivity extends BaseWebViewActivity {
                 super.onReceivedError(view, request, error);
             }
         });
-
         String url = getIntent().getStringExtra("url");
         if (TextUtils.isEmpty(url)) {
             bridgeWebView.loadUrl("file:///android_asset/webview/index.html");//h5地址
@@ -105,7 +102,6 @@ public class WebViewActivity extends BaseWebViewActivity {
 
     public void registerMethod() {
         //JS 通过 JSBridge 调用 Android
-
     }
 
 
@@ -120,14 +116,6 @@ public class WebViewActivity extends BaseWebViewActivity {
             bridgeWebView.destroy();
             bridgeWebView = null;
         }
-
-
-
-
     }
-
-
-
-
 
 }

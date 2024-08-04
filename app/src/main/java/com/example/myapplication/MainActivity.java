@@ -23,12 +23,21 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.myapplication.adapter.FragmentAdapter;
 import com.example.myapplication.activity.fragment.WebViewFragment;
+import com.example.myapplication.entity.BleDeviceInfo;
+import com.example.myapplication.entity.event.EventBusMsg;
 import com.example.myapplication.entity.main.BarGroup;
 import com.example.myapplication.entity.main.ItemConfig;
 import com.example.myapplication.entity.main.MainConfig;
+import com.example.myapplication.enums.EventBusEnum;
 import com.example.myapplication.service.BleService;
 import com.example.myapplication.util.LogUtil;
+import com.github.lzyzsd.jsbridge.BridgeWebView;
+import com.github.lzyzsd.jsbridge.CallBackFunction;
 import com.google.gson.Gson;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,13 +47,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 
 public class MainActivity extends AppCompatActivity {
-
     ViewPager viewPager;
-
     LinearLayout llBottom;
-
     List<Fragment> fragments = new CopyOnWriteArrayList<>();
     List<BarGroup> groups = new ArrayList<>();
+
+    private Gson gson = new Gson();
 
     private FragmentAdapter fragmentAdapter;
 
@@ -56,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        EventBus.getDefault().register(this);
 //        etUrl = findViewById(R.id.etUrl);
 //        btnConfirm = findViewById(R.id.btnConfirm);
         llBottom = findViewById(R.id.ll_bottom);
@@ -75,13 +84,46 @@ public class MainActivity extends AppCompatActivity {
         }, BIND_AUTO_CREATE);
         String data = getIntent().getStringExtra("data");
         mainConfig = new Gson().fromJson(data, MainConfig.class);
-
-
-        LogUtil.error("config:" + new Gson().toJson(mainConfig));
         initFragment();
-
-
     }
+
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onMessageEvent(EventBusMsg message) {
+        LogUtil.info("onMessageEvent"+gson.toJson(message));
+
+        try {
+            WebViewFragment fragment = (WebViewFragment) fragments.get(viewPager.getCurrentItem());
+            BridgeWebView bridgeWebView = fragment.getBridgeWebView();
+            if (message.getTagEnum() == EventBusEnum.BLE_FIND) {
+                BleDeviceInfo info = (BleDeviceInfo) message.getT();
+                bridgeWebView.callHandler("findBleDeviceCallBack", gson.toJson(info), new CallBackFunction() {
+                    @Override
+                    public void onCallBack(String data) {
+                    }
+                });
+            }
+            if (message.getTagEnum() == EventBusEnum.BLE_CONNECT) {
+                String macAddress = (String) message.getT();
+                bridgeWebView.callHandler("bleConnectSuccessCallBack", macAddress, new CallBackFunction() {
+                    @Override
+                    public void onCallBack(String data) {
+                    }
+                });
+            }
+            if (message.getTagEnum() == EventBusEnum.BLE_CONNECT_FAIL) {
+                String macAddress = (String) message.getT();
+                bridgeWebView.callHandler("bleConnectFailCallBack", macAddress, new CallBackFunction() {
+                    @Override
+                    public void onCallBack(String data) {
+                    }
+                });
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     public void initFragment() {
         mainConfig.getItems().sort(new Comparator<ItemConfig>() {
@@ -182,11 +224,16 @@ public class MainActivity extends AppCompatActivity {
                 groups.get(i).getTextView().setTextColor(Color.parseColor(mainConfig.getItemTextColor()));
             }
         }
-
     }
+
 
     public BleService getBleService() {
         return bleService;
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        EventBus.getDefault().unregister(this);
+    }
 }
