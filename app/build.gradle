@@ -46,6 +46,7 @@ android {
         targetGenDir 'src/main/java' //设置DaoMaster、DaoSession、Dao目录
     }
 
+
 }
 
 dependencies {
@@ -70,30 +71,21 @@ dependencies {
     implementation 'com.jcraft:jsch:0.1.55'
     implementation 'com.github.CymChad:BaseRecyclerViewAdapterHelper:3.0.4'
 
-
-    implementation 'com.github.getActivity:XXPermissions:18.5'
-
+    implementation 'com.github.getActivity:XXPermissions:20.0'
     implementation 'com.github.getActivity:Toaster:12.6'
     implementation 'com.github.getActivity:TitleBar:10.5'
-    implementation  'io.github.scwang90:refresh-layout-kernel:2.1.0'      //核心必须依赖
-    implementation  'io.github.scwang90:refresh-header-classics:2.1.0'    //经典刷新头
-//    implementation  'io.github.scwang90:refresh-header-radar:2.1.0'       //雷达刷新头
-//    implementation  'io.github.scwang90:refresh-header-falsify:2.1.0'     //虚拟刷新头
-//    implementation  'io.github.scwang90:refresh-header-material:2.1.0'    //谷歌刷新头
-//    implementation  'io.github.scwang90:refresh-header-two-level:2.1.0'   //二级刷新头
-//    implementation  'io.github.scwang90:refresh-footer-ball:2.1.0'        //球脉冲加载
-    implementation  'io.github.scwang90:refresh-footer-classics:2.1.0'    //经典加载
     //华为扫码
     api 'com.huawei.hms:scanplus:1.1.3.301' //支持除华为手机之外的手机 （更加友好） 2.9.0.300
-
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
-    implementation 'com.squareup.okhttp3:logging-interceptor:3.14.9'
-
+//    implementation 'com.squareup.okhttp3:logging-interceptor:3.14.9'
     implementation 'org.greenrobot:eventbus:3.1.1'
-
     implementation 'com.github.lzyzsd:jsbridge:1.0.4'
-
     // To use Standard variant:
     implementation 'cz.adaptech.tesseract4android:tesseract4android:4.7.0'
+    //图片裁剪框架
+    implementation 'com.theartofdev.edmodo:android-image-cropper:2.8.+'
+    //指纹识别
+    implementation 'androidx.biometric:biometric:1.2.0-alpha04'
+
 }

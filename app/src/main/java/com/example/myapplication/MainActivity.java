@@ -226,7 +226,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     public BleService getBleService() {
         return bleService;
     }

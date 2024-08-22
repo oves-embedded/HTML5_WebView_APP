@@ -132,6 +132,19 @@ public class BleDeviceUtil {
         return serviceDataDtoMap;
     }
 
+    @SuppressLint("MissingPermission")
+    public synchronized Result<Void> writeCharacteristic(String serviceUUID, String characteristicUUID, String value) throws ExecutionException, InterruptedException {
+        ServicesPropertiesDomain servicesPropertiesDomain = serviceDataDtoMap.get(serviceUUID);
+        if (servicesPropertiesDomain == null) {
+            return Result.fail("serviceUUID not match！");
+        }
+        CharacteristicDomain characteristicDomain = servicesPropertiesDomain.getCharacterMap().get(characteristicUUID);
+        if (characteristicDomain == null) {
+            return Result.fail("characteristicUUID not match！");
+        }
+        byte[] bytes = DataConvert.convert2Arr(value, characteristicDomain.getValType());
+        return writeCharacteristic(serviceUUID, characteristicUUID, bytes);
+    }
 
     @SuppressLint("MissingPermission")
     public synchronized Result<Void> writeCharacteristic(String serviceUUID, String characteristicUUID, byte[] value) throws ExecutionException, InterruptedException {
@@ -503,7 +516,7 @@ public class BleDeviceUtil {
                 if (characteristic.getValue() == null || characteristic.getValue().length <= 0) {
                     LogUtil.debug("BluetoothGattCallback onCharacteristicRead：value is null");
                     return;
-                }else{
+                } else {
                     LogUtil.debug("BluetoothGattCallback onCharacteristicRead  " + (characteristicDataDto.getName() != null ? characteristicDataDto.getName() : "?") + "   :" + ByteUtil.bytes2HexString(characteristic.getValue()));
                 }
                 characteristicDataDto.setValues(characteristic.getValue());
