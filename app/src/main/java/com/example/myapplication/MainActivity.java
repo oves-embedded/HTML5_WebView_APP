@@ -103,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
             }
-            if (message.getTagEnum() == EventBusEnum.BLE_CONNECT) {
+            else if (message.getTagEnum() == EventBusEnum.BLE_CONNECT) {
                 String macAddress = (String) message.getT();
                 bridgeWebView.callHandler("bleConnectSuccessCallBack", macAddress, new CallBackFunction() {
                     @Override
@@ -111,9 +111,15 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
             }
-            if (message.getTagEnum() == EventBusEnum.BLE_CONNECT_FAIL) {
+            else if (message.getTagEnum() == EventBusEnum.BLE_CONNECT_FAIL) {
                 String macAddress = (String) message.getT();
                 bridgeWebView.callHandler("bleConnectFailCallBack", macAddress, new CallBackFunction() {
+                    @Override
+                    public void onCallBack(String data) {
+                    }
+                });
+            }else if(message.getTagEnum() == EventBusEnum.MQTT_MSG_ARRIVED){
+                bridgeWebView.callHandler("mqttMsgArrivedCallBack", (String)message.getT(), new CallBackFunction() {
                     @Override
                     public void onCallBack(String data) {
                     }

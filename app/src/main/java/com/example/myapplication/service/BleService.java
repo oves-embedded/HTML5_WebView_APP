@@ -3,6 +3,7 @@ package com.example.myapplication.service;
 import static com.example.myapplication.enums.EventBusEnum.BLE_CONNECT;
 import static com.example.myapplication.enums.EventBusEnum.BLE_CONNECT_FAIL;
 import static com.example.myapplication.enums.EventBusEnum.BLE_INIT_ERROR;
+import static com.example.myapplication.enums.EventBusEnum.MQTT_MSG_ARRIVED;
 import static com.example.myapplication.enums.EventBusEnum.NOT_ENABLE_LE;
 import static com.example.myapplication.enums.EventBusEnum.NOT_SUPPORT_LE;
 
@@ -23,20 +24,32 @@ import android.text.TextUtils;
 
 import androidx.annotation.Nullable;
 
+import com.example.myapplication.constants.Result;
+import com.example.myapplication.constants.RetCode;
 import com.example.myapplication.entity.BleDeviceInfo;
+import com.example.myapplication.entity.MqttConfig;
 import com.example.myapplication.entity.event.EventBusMsg;
 import com.example.myapplication.enums.DeviceConnStatEnum;
 import com.example.myapplication.enums.EventBusEnum;
+import com.example.myapplication.thread.ThreadPool;
 import com.example.myapplication.util.BleDeviceUtil;
 import com.example.myapplication.util.LogUtil;
+import com.example.myapplication.util.MqttClientUtil;
+import com.example.myapplication.util.SharedPreferencesUtils;
+import com.google.gson.Gson;
 
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.greenrobot.eventbus.EventBus;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class BleService extends Service {
+public class BleService extends Service implements MqttCallback {
     private LocationManager mLocationManager;
     private Map<String, BluetoothDevice> bleDeviceMap = new ConcurrentHashMap<>();
 
@@ -58,10 +71,30 @@ public class BleService extends Service {
 
     private String bleKeyword = "";
 
+    private MqttClientUtil mqttClientUtil = null;
+
     @Override
     public void onCreate() {
         super.onCreate();
         initBleConfig();
+    }
+
+
+    public boolean connectMqtt(MqttConfig mqttConfig){
+        if(mqttClientUtil!=null){
+            try {
+                mqttClientUtil.disConnect();
+            } catch (MqttException e) {
+                e.printStackTrace();
+            }
+        }
+        mqttClientUtil = new MqttClientUtil(mqttConfig);
+        boolean connect = mqttClientUtil.createConnect(BleService.this);
+        if(connect){
+            return true;
+        }else{
+            return false;
+        }
     }
 
     public DeviceConnStatEnum getBleConnect() {
@@ -188,10 +221,33 @@ public class BleService extends Service {
         return bleDeviceUtil;
     }
 
+    public MqttClientUtil getMqttClientUtil() {
+        return mqttClientUtil;
+    }
+
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return new BleServiceBinder();
+    }
+
+    @Override
+    public void connectionLost(Throwable cause) {
+
+    }
+
+    @Override
+    public void messageArrived(String topic, MqttMessage message) throws Exception {
+        LogUtil.debug("MqttService==>messageArrived topic:" + topic + ",message:" + new String(message.getPayload()));
+        Map<String,String>map=new HashMap<>();
+        map.put("topic",topic);
+        map.put("message",new String(message.getPayload()));
+        EventBus.getDefault().post(new EventBusMsg<>(MQTT_MSG_ARRIVED,new Gson().toJson(map)));
+    }
+
+    @Override
+    public void deliveryComplete(IMqttDeliveryToken token) {
+
     }
 
 

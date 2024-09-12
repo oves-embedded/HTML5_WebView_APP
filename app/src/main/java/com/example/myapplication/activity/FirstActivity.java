@@ -22,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.myapplication.R;
 import com.example.myapplication.entity.main.ItemConfig;
 import com.example.myapplication.entity.main.MainConfig;
+import com.example.myapplication.util.SharedPreferencesUtils;
 import com.example.myapplication.util.permission.PermissionInterceptor;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.gson.Gson;
@@ -46,6 +47,8 @@ public class FirstActivity extends AppCompatActivity {
     Button btnDemo;
     Button btnImageCropper;
 
+    private static final String TAG = "FirstActivity";
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,6 +57,8 @@ public class FirstActivity extends AppCompatActivity {
         btnDemo = findViewById(R.id.btnDemo);
         btnWebSite = findViewById(R.id.btnWebSite);
         btnImageCropper = findViewById(R.id.btnImageCropper);
+        String cacheUrl= (String) SharedPreferencesUtils.getParam(FirstActivity.this,TAG,"");
+        etWebSite.setText(cacheUrl);
 
         btnDemo.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -113,6 +118,9 @@ public class FirstActivity extends AppCompatActivity {
                     Toaster.show("Please enter the URL of the page you want to navigate to");
                     return;
                 }
+
+                SharedPreferencesUtils.setParam(FirstActivity.this,TAG,s);
+
                 Intent intent = new Intent(FirstActivity.this, WebViewActivity.class);
                 intent.putExtra("url", s.trim());
                 startActivity(intent);

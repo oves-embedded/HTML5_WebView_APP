@@ -23,7 +23,10 @@ public enum RetCode {
     USER_CANCELED_OPERATION("9", "User canceled the operation"),
     PERMISSION_ERROR("9", "User has not granted the appropriate permissions"),
     PARAMETER_ERROR("10", "Parameter error"),
+    MQTT_CONNECT_FAIL("11", "MQTT connection failed"),
+    MQTT_CURRENT_NOT_CONNECTED("12", "MQTT is currently not connected"),
     METHOD_INVOCATION_EXCEPTION("000", "Method invocation exception");
+
 
     private String code;
     private String desc;

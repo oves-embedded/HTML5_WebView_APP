@@ -36,25 +36,32 @@
 			</div>
 			<button style="width: 200px;height: 50px;margin-top: 10px;"
 				@click="this.choosePicture">choosePicture</button>
-				
-				<div
-					style="width: 100%;height: 50px;display: flex; flex-direction: row;justify-content: center;align-items: center;margin-top: 10px;">
-					<input v-model="phone" style="width: 200px;height: 50px;" placeholder="please input phone" />
-					<button style="width: 200px;height: 50px;"
-						@click="this.callPhone">callPhone</button>
-				</div>
-				
-				<div
-					style="width: 100%;height: 50px;display: flex; flex-direction: row;justify-content: center;align-items: center;margin-top: 10px;">
-					<input v-model="sms.phone" style="width: 200px;height: 50px;" placeholder="please input phone" />
-					<input v-model="sms.content" style="width: 200px;height: 50px;" placeholder="please input phone" />
-					<button style="width: 200px;height: 50px;"
-						@click="this.sendSms">sendSms</button>
-				</div>
-							
-			
 
-			
+			<div
+				style="width: 100%;height: 50px;display: flex; flex-direction: row;justify-content: center;align-items: center;margin-top: 10px;">
+				<input v-model="phone" style="width: 200px;height: 50px;" placeholder="please input phone" />
+				<button style="width: 200px;height: 50px;" @click="this.callPhone">callPhone</button>
+			</div>
+
+			<div
+				style="width: 100%;height: 50px;display: flex; flex-direction: row;justify-content: center;align-items: center;margin-top: 10px;">
+				<input v-model="sms.phone" style="width: 200px;height: 50px;" placeholder="please input phone" />
+				<input v-model="sms.content" style="width: 200px;height: 50px;" placeholder="please input phone" />
+				<button style="width: 200px;height: 50px;" @click="this.sendSms">sendSms</button>
+			</div>
+
+			<button style="width: 200px;height: 50px;margin-top: 10px;" @click="this.connectMqtt">connectMqtt</button>
+			<button style="width: 200px;height: 50px;margin-top: 10px;" @click="this.mqttSubTopic">mqttSubTopic</button>
+			<button style="width: 200px;height: 50px;margin-top: 10px;"
+				@click="this.mqttUnSubTopic">mqttUnSubTopic</button>
+			<button style="width: 200px;height: 50px;margin-top: 10px;"
+				@click="this.mqttPublishMsg">mqttPublishMsg</button>
+
+
+			<button style="width: 200px;height: 50px;margin-top: 10px;" @click="this.saveParam">saveParam</button>
+			<button style="width: 200px;height: 50px;margin-top: 10px;" @click="this.getParam">getParam</button>
+			<button style="width: 200px;height: 50px;margin-top: 10px;"
+				@click="this.removeParam">removeParam</button>
 
 		</div>
 	</body>
@@ -64,22 +71,22 @@
 				return {
 					macAddress: "FF:23:12:07:00:01",
 					keyword: "OVES",
-					base64Img:"",
-					phone:"123456789",
-					sms:{
-						phone:"1233",
-						content:"hello"
+					base64Img: "",
+					phone: "123456789",
+					sms: {
+						phone: "1233",
+						content: "hello"
 					},
-					characteristicRead:{
-						serviceUUID:"",
-						characteristicUUID:"",
-						macAddress:"",
+					characteristicRead: {
+						serviceUUID: "",
+						characteristicUUID: "",
+						macAddress: "",
 					},
-					characteristicWrite:{
-						serviceUUID:"",
-						characteristicUUID:"",
-						value:"",
-						macAddress:"",
+					characteristicWrite: {
+						serviceUUID: "",
+						characteristicUUID: "",
+						value: "",
+						macAddress: "",
 					},
 					mainConfig: {
 						//"barBackgroundColor": "#A3A6A1",
@@ -138,7 +145,7 @@
 					bridge.registerHandler("findBleDeviceCallBack", function(data, responseCallback) {
 						console.info(data);
 						responseCallback(data);
-						
+
 					});
 
 					bridge.registerHandler("scanQrcodeResultCallBack", function(data, responseCallback) {
@@ -149,7 +156,7 @@
 					bridge.registerHandler("bleConnectSuccessCallBack", function(macAddress, responseCallback) {
 						console.info(macAddress);
 						responseCallback(macAddress);
-						
+
 						window.WebViewJavascriptBridge.callHandler(
 							'initBleData', macAddress,
 							function(responseData) {
@@ -166,10 +173,20 @@
 						console.info(data);
 						responseCallback(macAddress);
 					});
-					
+
 					bridge.registerHandler("choosePictureCallBack", function(data, responseCallback) {
 						console.info(data);
-						
+
+					});
+
+					bridge.registerHandler("connectMqttCallBack", function(data, responseCallback) {
+						console.info(data);
+
+					});
+
+					bridge.registerHandler("mqttMsgArrivedCallBack", function(data, responseCallback) {
+						console.info(data);
+
 					});
 					/////////////////////////////////Android Call JS: Registering JavaScript methods for Android to call, while you can also declare more methods.//////////////////////////////////
 
@@ -220,7 +237,7 @@
 						}
 					);
 				},
-				
+
 				readBleCharacteristic() {
 					window.WebViewJavascriptBridge.callHandler(
 						'readBleCharacteristic', this.characteristicRead,
@@ -228,7 +245,8 @@
 							console.info(responseData);
 						}
 					);
-				},writeBleCharacteristic(){
+				},
+				writeBleCharacteristic() {
 					window.WebViewJavascriptBridge.callHandler(
 						'writeBleCharacteristic', this.characteristicWrite,
 						function(responseData) {
@@ -236,7 +254,7 @@
 						}
 					);
 				},
-				
+
 				getScannedDevices() {
 					window.WebViewJavascriptBridge.callHandler(
 						'getScannedDevices', "",
@@ -269,14 +287,16 @@
 							console.info(responseData);
 						}
 					);
-				},choosePicture() {
+				},
+				choosePicture() {
 					window.WebViewJavascriptBridge.callHandler(
 						'choosePicture', 1,
 						function(responseData) {
 							console.info(responseData);
 						}
 					);
-				},callPhone() {
+				},
+				callPhone() {
 					window.WebViewJavascriptBridge.callHandler(
 						'callPhone', this.phone,
 						function(responseData) {
@@ -287,6 +307,114 @@
 				sendSms() {
 					window.WebViewJavascriptBridge.callHandler(
 						'sendSms', this.sms,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+
+				/**
+				 * If this method is called again, the previous connection will be disconnected
+				 */
+				connectMqtt() {
+					let data = {
+						username: "Admin",
+						password: "7xzUV@MT",
+						clientId: "123",
+						hostname: "mqtt.omnivoltaic.com",
+						port: 1883
+					}
+					window.WebViewJavascriptBridge.callHandler(
+						'connectMqtt', data,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+
+
+				mqttSubTopic() {
+					let data = {
+						topic: "/a/b/c",
+						qos: 0
+					}
+					window.WebViewJavascriptBridge.callHandler(
+						'mqttSubTopic', data,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+
+
+				mqttUnSubTopic() {
+					let data = {
+						topic: "/a/b/c"
+					}
+					window.WebViewJavascriptBridge.callHandler(
+						'mqttUnSubTopic', data,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+
+				mqttPublishMsg() {
+					let data = {
+						topic: "/a/b/c",
+						qos: 0,
+						content: "this is content!"
+					}
+					window.WebViewJavascriptBridge.callHandler(
+						'mqttPublishMsg', data,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+
+
+				/**
+				 * Duplicate key values will overwrite the previous values. The data will not disappear when the program exits; it will only be lost if the application is uninstalled.
+				 */
+				saveParam() {
+					let data = {
+						key: "this is unique key",
+						value: "json data"
+					}
+					window.WebViewJavascriptBridge.callHandler(
+						'saveParam', data,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+
+
+				getParam() {
+					let data = {
+						key: "this is unique key"
+					}
+					window.WebViewJavascriptBridge.callHandler(
+						'getParam', data,
+						function(responseData) {
+							console.info(responseData);
+							
+							window.WebViewJavascriptBridge.callHandler(
+								'toastMsg', responseData,
+								
+							);
+						}
+					);
+				},
+
+
+				removeParam() {
+					let data = {
+						key: "this is unique key"
+					}
+					window.WebViewJavascriptBridge.callHandler(
+						'removeParam', data,
 						function(responseData) {
 							console.info(responseData);
 						}

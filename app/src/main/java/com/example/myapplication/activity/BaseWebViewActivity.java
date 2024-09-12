@@ -8,6 +8,8 @@ import static com.example.myapplication.constants.RetCode.BLE_NOT_SUPPORTED;
 import static com.example.myapplication.constants.RetCode.BLE_SERVICE_NOT_INIT;
 import static com.example.myapplication.constants.RetCode.FAIL;
 import static com.example.myapplication.constants.RetCode.METHOD_INVOCATION_EXCEPTION;
+import static com.example.myapplication.constants.RetCode.MQTT_CONNECT_FAIL;
+import static com.example.myapplication.constants.RetCode.MQTT_CURRENT_NOT_CONNECTED;
 import static com.example.myapplication.constants.RetCode.PARAMETER_ERROR;
 import static com.example.myapplication.constants.RetCode.PERMISSION_ERROR;
 import static com.example.myapplication.constants.RetCode.RUNTIME_EXCEPTION;
@@ -39,6 +41,7 @@ import com.example.myapplication.constants.Result;
 import com.example.myapplication.constants.RetCode;
 import com.example.myapplication.entity.BleDeviceInfo;
 import com.example.myapplication.entity.CharacteristicDomain;
+import com.example.myapplication.entity.MqttConfig;
 import com.example.myapplication.entity.ServicesPropertiesDomain;
 import com.example.myapplication.entity.event.EventBusMsg;
 import com.example.myapplication.entity.js.BleData;
@@ -50,6 +53,8 @@ import com.example.myapplication.thread.ThreadPool;
 import com.example.myapplication.util.BleDeviceUtil;
 import com.example.myapplication.util.ImageUtil;
 import com.example.myapplication.util.LogUtil;
+import com.example.myapplication.util.MqttClientUtil;
+import com.example.myapplication.util.SharedPreferencesUtils;
 import com.example.myapplication.util.permission.PermissionInterceptor;
 import com.github.lzyzsd.jsbridge.BridgeHandler;
 import com.github.lzyzsd.jsbridge.BridgeWebView;
@@ -71,6 +76,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -137,7 +143,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                 }
             });
         }
-        if (message.getTagEnum() == EventBusEnum.BLE_CONNECT) {
+        else if (message.getTagEnum() == EventBusEnum.BLE_CONNECT) {
             String macAddress = (String) message.getT();
             bridgeWebView.callHandler("bleConnectSuccessCallBack", macAddress, new CallBackFunction() {
                 @Override
@@ -145,9 +151,15 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                 }
             });
         }
-        if (message.getTagEnum() == EventBusEnum.BLE_CONNECT_FAIL) {
+        else  if (message.getTagEnum() == EventBusEnum.BLE_CONNECT_FAIL) {
             String macAddress = (String) message.getT();
             bridgeWebView.callHandler("bleConnectFailCallBack", macAddress, new CallBackFunction() {
+                @Override
+                public void onCallBack(String data) {
+                }
+            });
+        }else if(message.getTagEnum() == EventBusEnum.MQTT_MSG_ARRIVED){
+            bridgeWebView.callHandler("mqttMsgArrivedCallBack", (String)message.getT(), new CallBackFunction() {
                 @Override
                 public void onCallBack(String data) {
                 }
@@ -601,6 +613,176 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                         });
                     }
                 });
+
+
+        bridgeWebView.registerHandler("connectMqtt", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+
+                if (TextUtils.isEmpty(data)) {
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                    return;
+                }
+                MqttConfig mqttConfig = gson.fromJson(data, MqttConfig.class);
+                if (TextUtils.isEmpty(mqttConfig.getHostname()) || mqttConfig.getPort() == null || TextUtils.isEmpty(mqttConfig.getClientId())) {
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                    return;
+                }
+                function.onCallBack(gson.toJson(Result.ok(true)));
+                ThreadPool.getExecutor().execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        boolean b = bleService.connectMqtt(mqttConfig);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (b) {
+                                    bridgeWebView.callHandler("connectMqttCallBack", gson.toJson(Result.ok(true)), new CallBackFunction() {
+                                        @Override
+                                        public void onCallBack(String data) {
+
+                                        }
+                                    });
+                                } else {
+                                    bridgeWebView.callHandler("connectMqttCallBack", gson.toJson(Result.fail(MQTT_CONNECT_FAIL, false)), new CallBackFunction() {
+                                        @Override
+                                        public void onCallBack(String data) {
+
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+
+        bridgeWebView.registerHandler("mqttSubTopic", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+                    JSONObject jsonObject = new JSONObject(data);
+                    String topic = jsonObject.getString("topic");
+                    int qos = jsonObject.getInt("qos");
+                    MqttClientUtil mqttClientUtil = bleService.getMqttClientUtil();
+
+                    if(mqttClientUtil==null||!mqttClientUtil.isConnected()){
+                        function.onCallBack(gson.toJson(Result.fail(MQTT_CURRENT_NOT_CONNECTED, false)));
+                        return;
+                    }
+                    boolean subscribe = mqttClientUtil.subscribe(topic, qos);
+                    if(subscribe){
+                        function.onCallBack(gson.toJson(Result.ok(true)));
+                    }else{
+                        function.onCallBack(gson.toJson(Result.fail(FAIL,false)));
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                }
+            }
+        });
+
+        bridgeWebView.registerHandler("mqttUnSubTopic", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+                    JSONObject jsonObject = new JSONObject(data);
+                    String topic = jsonObject.getString("topic");
+                    MqttClientUtil mqttClientUtil = bleService.getMqttClientUtil();
+
+                    if(mqttClientUtil==null||!mqttClientUtil.isConnected()){
+                        function.onCallBack(gson.toJson(Result.fail(MQTT_CURRENT_NOT_CONNECTED, false)));
+                        return;
+                    }
+                    boolean subscribe = mqttClientUtil.unSubscribe(topic);
+                    if(subscribe){
+                        function.onCallBack(gson.toJson(Result.ok(true)));
+                    }else{
+                        function.onCallBack(gson.toJson(Result.fail(FAIL,false)));
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                }
+            }
+        });
+
+        bridgeWebView.registerHandler("mqttPublishMsg", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+                    JSONObject jsonObject = new JSONObject(data);
+                    String topic = jsonObject.getString("topic");
+                    String content = jsonObject.getString("content");
+                    int qos = jsonObject.getInt("qos");
+                    MqttClientUtil mqttClientUtil = bleService.getMqttClientUtil();
+                    if(mqttClientUtil==null||!mqttClientUtil.isConnected()){
+                        function.onCallBack(gson.toJson(Result.fail(MQTT_CURRENT_NOT_CONNECTED, false)));
+                        return;
+                    }
+                    boolean subscribe = mqttClientUtil.publish(topic,qos,content.getBytes(StandardCharsets.UTF_8));
+                    if(subscribe){
+                        function.onCallBack(gson.toJson(Result.ok(true)));
+                    }else{
+                        function.onCallBack(gson.toJson(Result.fail(FAIL,false)));
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                }
+            }
+        });
+
+
+
+        bridgeWebView.registerHandler("saveParam", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+                    JSONObject jsonObject = new JSONObject(data);
+                    String key = jsonObject.getString("key");
+                    String value = jsonObject.getString("value");
+                    SharedPreferencesUtils.setParam(BaseWebViewActivity.this,key,value);
+                    function.onCallBack(gson.toJson(Result.ok(true)));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                }
+            }
+        });
+
+        bridgeWebView.registerHandler("getParam", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+                    JSONObject jsonObject = new JSONObject(data);
+                    String key = jsonObject.getString("key");
+                    String value=(String)SharedPreferencesUtils.getParam(BaseWebViewActivity.this, key, "");
+                    function.onCallBack(gson.toJson(Result.ok(value)));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, null)));
+                }
+            }
+        });
+
+        bridgeWebView.registerHandler("removeParam", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+                    JSONObject jsonObject = new JSONObject(data);
+                    String key = jsonObject.getString("key");
+                    SharedPreferencesUtils.removeParam(BaseWebViewActivity.this, key);
+                    function.onCallBack(gson.toJson(Result.ok(true)));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                }
+            }
+        });
     }
 
 
