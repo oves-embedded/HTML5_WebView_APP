@@ -124,7 +124,14 @@ public class MainActivity extends AppCompatActivity {
                     public void onCallBack(String data) {
                     }
                 });
+            }else if(message.getTagEnum() == EventBusEnum.GPS_CHANGE){
+                bridgeWebView.callHandler("locationCallBack", (String)message.getT(), new CallBackFunction() {
+                    @Override
+                    public void onCallBack(String data) {
+                    }
+                });
             }
+
         } catch (Exception e) {
             e.printStackTrace();
         }

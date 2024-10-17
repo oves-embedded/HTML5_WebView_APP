@@ -16,7 +16,8 @@ public enum EventBusEnum {
     BLE_CONNECT,
     BLE_DISCONNECT,
     BLE_CONNECT_FAIL,
-    MQTT_MSG_ARRIVED;
+    MQTT_MSG_ARRIVED,
+    GPS_CHANGE;
 
 
 }

@@ -37,6 +37,8 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
@@ -45,6 +47,7 @@ import com.example.myapplication.MainActivity;
 import com.example.myapplication.R;
 import com.example.myapplication.activity.BaseWebViewActivity;
 import com.example.myapplication.activity.FirstActivity;
+import com.example.myapplication.activity.OcrActivity;
 import com.example.myapplication.constants.Result;
 import com.example.myapplication.constants.RetCode;
 import com.example.myapplication.entity.BleDeviceInfo;
@@ -73,7 +76,10 @@ import com.hjq.permissions.Permission;
 import com.hjq.permissions.XXPermissions;
 import com.hjq.toast.Toaster;
 import com.huawei.hms.hmsscankit.ScanKitActivity;
+import com.huawei.hms.hmsscankit.ScanUtil;
+import com.huawei.hms.ml.scan.HmsScan;
 import com.huawei.hms.ml.scan.HmsScanAnalyzerOptions;
+import com.orhanobut.logger.Logger;
 import com.theartofdev.edmodo.cropper.CropImage;
 import com.theartofdev.edmodo.cropper.CropImageView;
 
@@ -91,6 +97,8 @@ public class WebViewFragment extends Fragment {
     private String contentUrl;
     private int REQUEST_CODE_SCAN_ONE = 999;
     private int CHOOSE_PIC_REQUEST_CODE = 111;
+
+    private int REQUEST_CODE_OCR=222;
     private Uri takePhotoUri;
 
     private Gson gson = new Gson();
@@ -139,8 +147,8 @@ public class WebViewFragment extends Fragment {
                 super.onReceivedError(view, request, error);
             }
         });
-        bridgeWebView.loadUrl(contentUrl);
-//        bridgeWebView.loadUrl("file:///android_asset/webview/index.html");//h5地址
+//        bridgeWebView.loadUrl(contentUrl);
+        bridgeWebView.loadUrl("file:///android_asset/webview/index.html");//h5地址
 
         registerCommMethod();
     }
@@ -764,10 +772,177 @@ public class WebViewFragment extends Fragment {
         });
 
 
+        bridgeWebView.registerHandler("fingerprintVerification", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                function.onCallBack(gson.toJson(Result.ok(true)));
+
+                BiometricPrompt biometricPrompt = new BiometricPrompt(getActivity(),
+                        ContextCompat.getMainExecutor(getActivity()), new BiometricPrompt.AuthenticationCallback() {
+                    @Override
+                    public void onAuthenticationError(int errorCode,
+                                                      @NonNull CharSequence errString) {
+                        super.onAuthenticationError(errorCode, errString);
+                        Logger.e("Authentication error: " + errString);
+                        bridgeWebView.callHandler("fingerprintVerificationCallBack", gson.toJson(Result.fail(FAIL.getCode(),"Authentication error: " + errString,false)), new CallBackFunction() {
+                            @Override
+                            public void onCallBack(String data) {
+                            }
+                        });
+
+                    }
+
+                    @Override
+                    public void onAuthenticationSucceeded(
+                            @NonNull BiometricPrompt.AuthenticationResult result) {
+                        super.onAuthenticationSucceeded(result);
+                        Logger.d("Authentication succeeded! ");
+
+                        bridgeWebView.callHandler("fingerprintVerificationCallBack", gson.toJson(Result.ok(true)), new CallBackFunction() {
+                            @Override
+                            public void onCallBack(String data) {
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onAuthenticationFailed() {
+                        super.onAuthenticationFailed();
+                        Logger.e("Authentication failed! ");
+
+                        bridgeWebView.callHandler("fingerprintVerificationCallBack", gson.toJson(Result.fail(FAIL.getCode(),"Authentication failed!",false)), new CallBackFunction() {
+                            @Override
+                            public void onCallBack(String data) {
+                            }
+                        });
+                    }
+                });
+                BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                        .setTitle("Fingerprint Verification")
+                        .setSubtitle("Verifying your fingerprints")
+                        .setNegativeButtonText("Cancel")
+                        .build();
+                biometricPrompt.authenticate(promptInfo);
+            }
+        });
 
 
+        bridgeWebView.registerHandler("openOcr", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+                    if(data ==null||data.isEmpty()){
+                        function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                        return;
+                    }
+                    Uri uri = ImageUtil.saceCacheImageAndGetUri(getActivity(), ImageUtil.base64ImgTrimPre(data));
+                    Intent intent = new Intent(getActivity(), OcrActivity.class);
+                    intent.putExtra("uri", uri.toString());
+                    startActivityForResult(intent,REQUEST_CODE_OCR);
 
 
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                }
+            }
+        });
+
+        bridgeWebView.registerHandler("saveImg", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+                    if(data ==null||data.isEmpty()){
+                        function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                        return;
+                    }
+
+                    function.onCallBack(gson.toJson(Result.ok(true)));
+                    ThreadPool.getExecutor().execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            ImageUtil.saveImageToGallery(getActivity(),data);
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+
+                                }
+                            });
+                        }
+                    });
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                }
+            }
+        });
+
+        bridgeWebView.registerHandler("startLocationListener", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+
+                    XXPermissions.with(getActivity()).permission(Permission.ACCESS_FINE_LOCATION).permission(Permission.ACCESS_COARSE_LOCATION)
+                            .interceptor(new PermissionInterceptor()).request(new OnPermissionCallback() {
+                                @Override
+                                public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
+                                    if (!allGranted) {
+                                        function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR,false)));
+                                        return;
+                                    }
+                                    function.onCallBack(gson.toJson(Result.ok(true)));
+                                    BleService bleService = ((MainActivity) getActivity()).getBleService();
+                                    bleService.startGps();
+                                }
+                            });
+
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                }
+            }
+        });
+
+        bridgeWebView.registerHandler("stopLocationListener", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+                    XXPermissions.with(getActivity()).permission(Permission.ACCESS_FINE_LOCATION).permission(Permission.ACCESS_COARSE_LOCATION)
+                            .interceptor(new PermissionInterceptor()).request(new OnPermissionCallback() {
+                                @Override
+                                public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
+                                    if (!allGranted) {
+                                        function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR,false)));
+                                        return;
+                                    }
+                                    function.onCallBack(gson.toJson(Result.ok(true)));
+                                    BleService bleService = ((MainActivity) getActivity()).getBleService();
+                                    bleService.stopGps();
+                                }
+                            });
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                }
+            }
+        });
+
+        bridgeWebView.registerHandler("getLastLocation", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+                    BleService bleService = ((MainActivity) getActivity()).getBleService();
+                    String lastLocation = bleService.getLastLocation();
+                    function.onCallBack(gson.toJson(Result.ok(lastLocation)));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, "")));
+                }
+            }
+        });
     }
 
 
@@ -904,6 +1079,37 @@ public class WebViewFragment extends Fragment {
                 });
 
             }
+        }
+        if (requestCode == REQUEST_CODE_SCAN_ONE && resultCode == RESULT_OK) {
+            HmsScan obj = data.getParcelableExtra(ScanUtil.RESULT);
+            Toaster.show(obj.originalValue);
+            if (obj != null) {
+                Map<String, Object> map = new HashMap<String, Object>();
+                map.put("value", obj.originalValue);
+                map.put("requestCode", REQUEST_CODE_SCAN_ONE);
+                bridgeWebView.callHandler("scanQrcodeResultCallBack", gson.toJson(Result.ok(map)), new CallBackFunction() {
+                    @Override
+                    public void onCallBack(String data) {
+                        LogUtil.debug(String.format("scanQrcodeResultCallBack return:[%s]", data));
+                    }
+                });
+            } else {
+                bridgeWebView.callHandler("scanQrcodeResultCallBack", gson.toJson(Result.fail()), new CallBackFunction() {
+                    @Override
+                    public void onCallBack(String data) {
+                        LogUtil.debug(String.format("scanQrcodeResultCallBack return:[%s]", data));
+                    }
+                });
+            }
+        }
+        if(requestCode==REQUEST_CODE_OCR&& resultCode == RESULT_OK){
+            String resultData = data.getStringExtra("ocrStr");
+            // 处理结果
+            bridgeWebView.callHandler("openOcrCallBack", resultData, new CallBackFunction() {
+                @Override
+                public void onCallBack(String data) {
+                }
+            });
         }
     }
 

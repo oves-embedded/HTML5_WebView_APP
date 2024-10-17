@@ -30,9 +30,9 @@
         android:id="@+id/btnImageCropper"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="open the demo"
+        android:text="Image Cropper"
         android:layout_gravity="center"
-        android:visibility="gone"/>
+        />
 
 
 </LinearLayout>
