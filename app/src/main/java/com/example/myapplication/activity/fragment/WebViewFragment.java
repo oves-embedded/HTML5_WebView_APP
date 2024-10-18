@@ -147,8 +147,8 @@ public class WebViewFragment extends Fragment {
                 super.onReceivedError(view, request, error);
             }
         });
-//        bridgeWebView.loadUrl(contentUrl);
-        bridgeWebView.loadUrl("file:///android_asset/webview/index.html");//h5地址
+        bridgeWebView.loadUrl(contentUrl);
+//        bridgeWebView.loadUrl("file:///android_asset/webview/index.html");//h5地址
 
         registerCommMethod();
     }
