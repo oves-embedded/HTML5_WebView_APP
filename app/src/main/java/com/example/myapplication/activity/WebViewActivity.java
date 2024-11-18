@@ -32,9 +32,6 @@ public class WebViewActivity extends BaseWebViewActivity {
     @Override
     public void initView() {
         setContentView(R.layout.activity_webview);
-
-
-
 //        bridgeWebView.setHorizontalScrollBarEnabled(false);
 //        bridgeWebView.setVerticalScrollBarEnabled(false);
 //        bridgeWebView.getSettings().setUseWideViewPort(true);
