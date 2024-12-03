@@ -14,6 +14,7 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattService;
 import android.content.Context;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -430,6 +431,7 @@ public class BleDeviceUtil {
             //可以开始进行service读写了
             LogUtil.debug("BluetoothGattCallback onServicesDiscovered:" + status);
             if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d("BleDeviceUtil", "Services discovered:");
                 List<BluetoothGattService> services = gatt.getServices();
                 if (services != null && services.size() > 0) {
                     for (int i = 0; i < services.size(); i++) {

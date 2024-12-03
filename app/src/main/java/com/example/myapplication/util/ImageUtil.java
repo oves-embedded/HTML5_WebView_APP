@@ -1,8 +1,15 @@
 package com.example.myapplication.util;
 
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Base64;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -75,5 +82,89 @@ public class ImageUtil {
             e.printStackTrace();
             return false;
         }
+    }
+
+    public static Uri saceCacheImageAndGetUri(Context context, String base64String) throws IOException {
+        // 创建一个临时文件来存储图片
+        File tempFile = File.createTempFile("image", ".jpg", context.getExternalCacheDir());
+        // 将字节数组写入文件
+        try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+            fos.write(Base64.decode(base64String, Base64.DEFAULT));
+            fos.flush();
+        }
+        // 获取文件的Uri
+        return Uri.fromFile(tempFile);
+    }
+
+    public static boolean saveImageToGallery(Context context,Bitmap bitmap) {
+        if(bitmap==null){
+            return false;
+        }
+        // 获取图片存储的路径
+        String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath();
+        // 创建文件
+        File file = new File(path, "image.jpg");
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+            fos.flush();
+            fos.close();
+            // 通知图库更新
+            MediaStore.Images.Media.insertImage(context.getContentResolver(), file.getAbsolutePath(), "image", null);
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+
+    public static boolean saveImageToGallery(Context context,String imgBase64) {
+        imgBase64 = base64ImgTrimPre(imgBase64);
+        if(TextUtils.isEmpty(imgBase64)){
+            return false;
+        }
+        Bitmap bitmap = base64ToBitmap(imgBase64);
+        // 获取图片存储的路径
+        String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath();
+        // 创建文件
+        File file = new File(path, "image.jpg");
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+            fos.flush();
+            fos.close();
+            // 通知图库更新
+            MediaStore.Images.Media.insertImage(context.getContentResolver(), file.getAbsolutePath(), "image", null);
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static Bitmap base64ToBitmap(String base64Image) {
+        try {
+            // 解码 Base64 字符串
+            byte[] decodedString = Base64.decode(base64Image, Base64.DEFAULT);
+            // 将字节数组转换为 Bitmap 对象
+            return BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+            return null; // 返回 null，表示解码失败
+        }
+    }
+
+    public static String base64ImgTrimPre(String base64Image){
+        if(TextUtils.isEmpty(base64Image)){
+            return "";
+        }
+        // 检查 src 是否是一个 base64 编码的图片
+        if (base64Image.startsWith("data:image")) {
+            // 去掉 data:image/...;base64, 前缀
+            int base64StartIndex = base64Image.indexOf(",") + 1;
+            base64Image=base64Image.substring(base64StartIndex);
+        }
+        return base64Image;
     }
 }

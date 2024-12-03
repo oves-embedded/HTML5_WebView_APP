@@ -86,10 +86,11 @@
         <activity android:name=".MainActivity"></activity>
         <service android:name=".service.BleService"/>
         <activity android:name="com.huawei.hms.hmsscankit.ScanKitActivity" />
+        <activity android:name=".activity.OcrActivity"/>
         <activity
             android:name="com.theartofdev.edmodo.cropper.CropImageActivity"
             android:theme="@style/Base.Theme.AppCompat" /> <!-- optional (needed if default theme has no action bar) -->
-
+        <service android:name=".service.GpsService"/>
     </application>
 
 
