@@ -26,7 +26,6 @@
         android:id="@+id/ll_bottom"
         android:layout_width="match_parent"
         android:layout_height="60dp"
-        android:background="@color/design_default_color_error"
         android:orientation="horizontal"
         >
 <!--        <LinearLayout-->

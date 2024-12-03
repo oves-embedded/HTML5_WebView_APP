@@ -174,15 +174,20 @@
 							}
 						);
 					});
-					bridge.registerHandler("bleConnectFailCallBack", function(macAddress, responseCallback) {
-						console.info(macAddress);
-						responseCallback(macAddress);
-					});
-
-					bridge.registerHandler("bleInitDataCallBack", function(data, responseCallback) {
+					
+					
+					/*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
+					bridge.registerHandler("bleInitDataOnProgressCallBack", function(data, responseCallback) {
 						console.info(data);
-						responseCallback(macAddress);
 					});
+					bridge.registerHandler("bleInitDataOnCompleteCallBack", function(data, responseCallback) {
+						console.info(data);
+					});
+					bridge.registerHandler("bleInitDataFailureCallBack", function(data, responseCallback) {
+						console.info(data);
+					});
+					/*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
+					
 
 					bridge.registerHandler("choosePictureCallBack", function(data, responseCallback) {
 						console.info(data);
