@@ -1,0 +1,54 @@
+name: Build and Publish APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+
+      - name: Build APK
+        run: ./gradlew assembleRelease
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          echo "Generating release notes..."
+          git fetch --prune --unshallow
+          # Get the last tag
+          LAST_TAG=$(git describe --tags --abbrev=0)
+          # Get the current tag
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+          # Generate release notes from commits between last and current tag
+          RELEASE_NOTES=$(git log "$LAST_TAG".."$CURRENT_TAG" --pretty=format:'* %s')
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_NOTES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Publish to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          apk_path=$(find app/build/outputs/apk/release -name "*.apk")
+          gh release create "$CURRENT_TAG" "$apk_path" --title "Release $CURRENT_TAG" --notes "${{ env.RELEASE_NOTES }}"
+
+      - name: Upload APK to S3
+        uses: jakejarvis/s3-sync-action@0.5.0
+        with:
+          args: --acl public-read --follow-symlinks
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SOURCE_DIR: app/build/outputs/apk/release
