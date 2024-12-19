@@ -2,12 +2,20 @@ package com.example.myapplication.activity;
 
 import android.text.TextUtils;
 import android.view.ViewGroup;
+import android.webkit.GeolocationPermissions;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+
+ import android.webkit.WebChromeClient;
+ import android.webkit.PermissionRequest;
+ import androidx.core.content.ContextCompat;
+ import android.Manifest;
+ import android.content.pm.PackageManager;
+ import androidx.annotation.NonNull;
 
 import com.example.myapplication.MainActivity;
 import com.example.myapplication.R;
@@ -30,6 +38,14 @@ public class WebViewActivity extends BaseWebViewActivity {
 
     private int REQUEST_CODE_SCAN_ONE = 999;
 
+    private GeolocationPermissions.Callback geolocationCallback;
+    private String geolocationOrigin;
+
+    public void setGeolocationCallback(GeolocationPermissions.Callback callback, String origin) {
+        this.geolocationCallback = callback;
+        this.geolocationOrigin = origin;
+    }
+
 
     @Override
     public void initView() {
@@ -48,6 +64,49 @@ public class WebViewActivity extends BaseWebViewActivity {
 //        bridgeWebView.getSettings().setLoadsImagesAutomatically(true);
 //        // 设置支持javascript// 本地 DOM 存储（解决加载某些网页出现白板现象）
         bridgeWebView.getSettings().setJavaScriptEnabled(true);
+        // Set custom Chrome client
+        // Set up WebChromeClient for location permissions
+        bridgeWebView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                if (ContextCompat.checkSelfPermission(WebViewActivity.this,
+                        Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                    callback.invoke(origin, true, false);
+                } else {
+                    geolocationCallback = callback;
+                    geolocationOrigin = origin;
+
+                    XXPermissions.with(WebViewActivity.this)
+                            .permission(Permission.ACCESS_FINE_LOCATION)
+                            .permission(Permission.ACCESS_COARSE_LOCATION)
+                            .request(new OnPermissionCallback() {
+                                @Override
+                                public void onGranted(@NonNull List<String> permissions, boolean all) {
+                                    if (all) {
+                                        callback.invoke(origin, true, false);
+                                    } else {
+                                        callback.invoke(origin, false, false);
+                                    }
+                                }
+
+                                @Override
+                                public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
+                                    callback.invoke(origin, false, false);
+                                }
+
+//                                @Override
+//                                public void onPermissionRequest(PermissionRequest request) {
+//                                    runOnUiThread(() -> {
+//                                        request.grant(request.getResources());
+//                                    });
+//                                }
+                            });
+                }
+            }
+        });
+
+
+
         // 设置UserAgent
 //        bridgeWebView.getSettings().setUserAgentString(bridgeWebView.getSettings().getUserAgentString() + "app");
     }
