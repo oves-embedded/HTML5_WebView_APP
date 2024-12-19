@@ -62,7 +62,7 @@ public class FirstActivity extends AppCompatActivity {
 
     Button btnDemo;
     Button btnImageCropper;
-
+    Button btnBleScanner;
     private static final String TAG = "FirstActivity";
 
     @Override
@@ -73,6 +73,7 @@ public class FirstActivity extends AppCompatActivity {
         btnDemo = findViewById(R.id.btnDemo);
         btnWebSite = findViewById(R.id.btnWebSite);
         btnImageCropper = findViewById(R.id.btnImageCropper);
+        btnBleScanner=findViewById(R.id.btnBleScanner);
         String cacheUrl= (String) SharedPreferencesUtils.getParam(FirstActivity.this,TAG,"");
         etWebSite.setText(cacheUrl);
 
@@ -197,6 +198,19 @@ public class FirstActivity extends AppCompatActivity {
 //                        .start(FirstActivity.this);
             }
         });
+
+
+        btnBleScanner.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(FirstActivity.this, WebViewActivity.class);
+                intent.putExtra("url", "file:///android_asset/webview/BleScanDemo.html");
+                startActivity(intent);
+            }
+        });
+
+
+
         XXPermissions.with(this).permission(Permission.BLUETOOTH_SCAN).permission(Permission.BLUETOOTH_CONNECT).permission(Permission.BLUETOOTH_ADVERTISE).permission(Permission.ACCESS_FINE_LOCATION).permission(Permission.ACCESS_COARSE_LOCATION)
                 .interceptor(new PermissionInterceptor()).request(new OnPermissionCallback() {
                     @Override

@@ -31,10 +31,7 @@ import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.biometric.BiometricPrompt;
@@ -46,15 +43,15 @@ import androidx.lifecycle.LifecycleOwner;
 import com.example.myapplication.MainActivity;
 import com.example.myapplication.R;
 import com.example.myapplication.activity.BaseWebViewActivity;
-import com.example.myapplication.activity.FirstActivity;
 import com.example.myapplication.activity.OcrActivity;
+import com.example.myapplication.callback.InitBleDataCallBack;
 import com.example.myapplication.constants.Result;
-import com.example.myapplication.constants.RetCode;
 import com.example.myapplication.entity.BleDeviceInfo;
 import com.example.myapplication.entity.CharacteristicDomain;
 import com.example.myapplication.entity.MqttConfig;
 import com.example.myapplication.entity.ServicesPropertiesDomain;
-import com.example.myapplication.entity.js.BleData;
+import com.example.myapplication.entity.js.CharacteristicDto;
+import com.example.myapplication.entity.js.ServicesPropertiesDto;
 import com.example.myapplication.entity.main.MainConfig;
 import com.example.myapplication.enums.DeviceConnStatEnum;
 import com.example.myapplication.service.BleService;
@@ -80,17 +77,15 @@ import com.huawei.hms.hmsscankit.ScanUtil;
 import com.huawei.hms.ml.scan.HmsScan;
 import com.huawei.hms.ml.scan.HmsScanAnalyzerOptions;
 import com.orhanobut.logger.Logger;
-import com.theartofdev.edmodo.cropper.CropImage;
-import com.theartofdev.edmodo.cropper.CropImageView;
 
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class WebViewFragment extends Fragment {
     private BridgeWebView bridgeWebView;
@@ -282,40 +277,172 @@ public class WebViewFragment extends Fragment {
             }
         });
 
+
         bridgeWebView.registerHandler("initBleData", new BridgeHandler() {
             @Override
             public void handler(String macAddress, CallBackFunction function) {
                 //JS传递给Android
-                if (((MainActivity) getActivity()).getBleService() != null) {
-                    BleDeviceUtil bleDeviceUtil = ((MainActivity) getActivity()).getBleService().getBleDeviceUtil();
-                    String address = bleDeviceUtil.getBluetoothDevice().getAddress();
-                    if (bleDeviceUtil.getConnectStat() == DeviceConnStatEnum.CONNECTED) {
+                if (((MainActivity)getActivity()).getBleService() != null) {
+                    BleDeviceUtil bleDeviceUtil = ((MainActivity)getActivity()).getBleService().getBleDeviceUtil();
+                    if (bleDeviceUtil != null && bleDeviceUtil.getConnectStat() == DeviceConnStatEnum.CONNECTED) {
+                        String address = bleDeviceUtil.getBluetoothDevice().getAddress();
                         if (address.equals(macAddress)) {
                             function.onCallBack(gson.toJson(Result.ok(true)));
                             ThreadPool.getExecutor().execute(new Runnable() {
                                 @Override
                                 public void run() {
-                                    Map<String, ServicesPropertiesDomain> resultMap = bleDeviceUtil.initData();
-                                    LogUtil.error("resultMap:" + gson.toJson(resultMap));
-                                    getActivity().runOnUiThread(new Runnable() {
+                                    bleDeviceUtil.initData(new InitBleDataCallBack() {
                                         @Override
-                                        public void run() {
-                                            BleData bleData = new BleData(bleDeviceUtil.getBluetoothDevice().getAddress(), new ArrayList<>(resultMap.values()));
-                                            bridgeWebView.callHandler("bleInitDataCallBack", gson.toJson(bleData), new CallBackFunction() {
+                                        public void onProgress(int total, int progress, CharacteristicDomain domain) {
+                                            getActivity().runOnUiThread(new Runnable() {
                                                 @Override
-                                                public void onCallBack(String data) {
+                                                public void run() {
+                                                    Map<String, Object> map = new HashMap<>();
+                                                    map.put("total", total);
+                                                    map.put("progress", progress);
+                                                    map.put("data", domain.toString());
+                                                    map.put("macAddress", bleDeviceUtil.getBluetoothDevice().getAddress());
+                                                    bridgeWebView.callHandler("bleInitDataOnProgressCallBack", gson.toJson(map), new CallBackFunction() {
+                                                        @Override
+                                                        public void onCallBack(String data) {
 
+                                                        }
+                                                    });
                                                 }
                                             });
-                                            ServicesPropertiesDomain remove = bleData.getDataList().remove(0);
-                                            LogUtil.error("resultMap:" + gson.toJson(remove));
+                                        }
+
+                                        @Override
+                                        public void onComplete(Map<String, ServicesPropertiesDomain> data) {
+                                            getActivity().runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    Collection<ServicesPropertiesDomain> values = data.values();
+                                                    List<ServicesPropertiesDto> dataList = null;
+                                                    for (ServicesPropertiesDomain domain : values) {
+                                                        ServicesPropertiesDto servicesPropertiesDto = new ServicesPropertiesDto();
+                                                        servicesPropertiesDto.setUuid(domain.getUuid());
+                                                        servicesPropertiesDto.setServiceNameEnum(domain.getServiceNameEnum());
+                                                        servicesPropertiesDto.setServiceProperty(domain.getServiceProperty());
+                                                        if (dataList == null)
+                                                            dataList = new ArrayList<>();
+                                                        dataList.add(servicesPropertiesDto);
+                                                        Collection<CharacteristicDomain> values1 = domain.getCharacterMap().values();
+                                                        for (CharacteristicDomain characteristicDomain : values1) {
+                                                            CharacteristicDto characteristicDto = new CharacteristicDto();
+                                                            characteristicDto.setDesc(characteristicDomain.getDesc());
+                                                            characteristicDto.setUuid(characteristicDomain.getUuid());
+                                                            characteristicDto.setDescriptors(new ArrayList<>(characteristicDomain.getDescMap().values()));
+                                                            characteristicDto.setName(characteristicDomain.getName());
+                                                            characteristicDto.setServiceUuid(characteristicDomain.getServiceUuid());
+                                                            characteristicDto.setProperties(characteristicDomain.getProperties());
+                                                            characteristicDto.setRealVal(characteristicDto.getRealVal());
+                                                            characteristicDto.setValType(characteristicDomain.getValType());
+                                                            characteristicDto.setValues(characteristicDomain.getValues());
+                                                            if(servicesPropertiesDto.getCharacteristicList()==null){
+                                                                servicesPropertiesDto.setCharacteristicList(new ArrayList<>());
+                                                            }
+                                                            servicesPropertiesDto.getCharacteristicList().add(characteristicDto);
+                                                        }
+                                                    }
+                                                    Map<String,Object>obj=new HashMap<>();
+                                                    obj.put("macAddress",macAddress);
+                                                    obj.put("dataList",dataList);
+                                                    bridgeWebView.callHandler("bleInitDataOnCompleteCallBack", gson.toJson(obj), new CallBackFunction() {
+                                                        @Override
+                                                        public void onCallBack(String data) {
+
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        }
+
+                                        @Override
+                                        public void onFailure(String error) {
+                                            getActivity().runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    Map<String, Object> objectMap = new HashMap<>();
+                                                    objectMap.put("errorMsg", error);
+                                                    objectMap.put("macAddress", bleDeviceUtil.getBluetoothDevice().getAddress());
+                                                    bridgeWebView.callHandler("bleInitDataFailureCallBack", gson.toJson(objectMap), new CallBackFunction() {
+                                                        @Override
+                                                        public void onCallBack(String data) {
+
+                                                        }
+                                                    });
+                                                }
+                                            });
                                         }
                                     });
+
                                 }
                             });
                         } else {
                             function.onCallBack(gson.toJson(Result.fail(BLE_MAC_ADDRESS_NOT_MATCH, false)));
                         }
+                    } else {
+                        function.onCallBack(gson.toJson(Result.fail(BLE_NOT_CONNECTED, false)));
+                    }
+                } else {
+                    function.onCallBack(gson.toJson(Result.fail(BLE_SERVICE_NOT_INIT, false)));
+                }
+
+            }
+        });
+
+        bridgeWebView.registerHandler("writeBleCharacteristic", new BridgeHandler() {
+            String serviceUUID = null, characteristicUUID = null, value = null, macAddress = null;
+
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                try {
+                    JSONObject jsonObject = new JSONObject(data);
+                    serviceUUID = jsonObject.getString("serviceUUID");
+                    characteristicUUID = jsonObject.getString("characteristicUUID");
+                    value = jsonObject.getString("value");
+                    macAddress = jsonObject.getString("macAddress");
+                } catch (Exception e) {
+                    function.onCallBack(gson.toJson(Result.fail(FAIL.getCode(), e.getMessage(), false)));
+                    return;
+                }
+
+                if (TextUtils.isEmpty(serviceUUID) || TextUtils.isEmpty(characteristicUUID) || TextUtils.isEmpty(value) || TextUtils.isEmpty(macAddress)) {
+                    function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
+                    return;
+                }
+                //JS传递给Android
+                if (((MainActivity) getActivity()).getBleService() != null) {
+                    BleDeviceUtil bleDeviceUtil = ((MainActivity) getActivity()).getBleService().getBleDeviceUtil();
+                    if (bleDeviceUtil != null && bleDeviceUtil.getConnectStat() == DeviceConnStatEnum.CONNECTED) {
+                        if (bleDeviceUtil.getBluetoothDevice().getAddress().equals(macAddress)) {
+                            function.onCallBack(gson.toJson(Result.fail(BLE_MAC_ADDRESS_NOT_MATCH, false)));
+                            return;
+                        }
+                        ThreadPool.getExecutor().execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                Result<Void> voidResult = null;
+                                try {
+                                    voidResult = bleDeviceUtil.writeCharacteristic(serviceUUID, characteristicUUID, value);
+                                } catch (Exception e) {
+                                    function.onCallBack(gson.toJson(Result.fail(FAIL.getCode(), e.getMessage(), false)));
+                                }
+                                Result<Void> finalVoidResult = voidResult;
+                                getActivity().runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (finalVoidResult.success()) {
+                                            function.onCallBack(gson.toJson(Result.ok(true)));
+                                        } else {
+                                            function.onCallBack(gson.toJson(Result.fail(FAIL.getCode(), finalVoidResult.getRespDesc(), false)));
+                                        }
+                                    }
+                                });
+                            }
+                        });
+
                     } else {
                         function.onCallBack(gson.toJson(Result.fail(BLE_NOT_CONNECTED, false)));
                     }

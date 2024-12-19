@@ -5,9 +5,11 @@ import android.view.ViewGroup;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import com.example.myapplication.MainActivity;
 import com.example.myapplication.R;
 import com.example.myapplication.util.permission.PermissionInterceptor;
 import com.github.lzyzsd.jsbridge.BridgeWebViewClient;
@@ -34,33 +36,51 @@ public class WebViewActivity extends BaseWebViewActivity {
         setContentView(R.layout.activity_webview);
 //        bridgeWebView.setHorizontalScrollBarEnabled(false);
 //        bridgeWebView.setVerticalScrollBarEnabled(false);
-//        bridgeWebView.getSettings().setUseWideViewPort(true);
-//        bridgeWebView.getSettings().setLoadWithOverviewMode(true);
-//        bridgeWebView.getSettings().setDomStorageEnabled(true);//开启DOM
+        bridgeWebView.getSettings().setUseWideViewPort(true);
+        bridgeWebView.getSettings().setLoadWithOverviewMode(true);
+        bridgeWebView.getSettings().setDomStorageEnabled(true);//开启DOM
 
         // 允许网页定位
-//        bridgeWebView.getSettings().setGeolocationEnabled(true);
+        bridgeWebView.getSettings().setGeolocationEnabled(true);
 //        // 允许网页弹对话框
-//        bridgeWebView.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
+        bridgeWebView.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
 //        // 加快网页加载完成的速度，等页面完成再加载图片
 //        bridgeWebView.getSettings().setLoadsImagesAutomatically(true);
 //        // 设置支持javascript// 本地 DOM 存储（解决加载某些网页出现白板现象）
-//        bridgeWebView.getSettings().setJavaScriptEnabled(true);
+        bridgeWebView.getSettings().setJavaScriptEnabled(true);
         // 设置UserAgent
 //        bridgeWebView.getSettings().setUserAgentString(bridgeWebView.getSettings().getUserAgentString() + "app");
     }
 
     @Override
     public void initPermissions() {
-        XXPermissions.with(this).permission(Permission.BLUETOOTH_SCAN).permission(Permission.BLUETOOTH_CONNECT).permission(Permission.BLUETOOTH_ADVERTISE).permission(Permission.ACCESS_FINE_LOCATION).permission(Permission.ACCESS_COARSE_LOCATION).interceptor(new PermissionInterceptor()).request(new OnPermissionCallback() {
-            @Override
-            public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
-                if (!allGranted) {
-                    return;
-                }
-            }
-        });
+        XXPermissions.with(this)
+                .permission(Permission.BLUETOOTH_SCAN)
+                .permission(Permission.BLUETOOTH_CONNECT)
+                .permission(Permission.BLUETOOTH_ADVERTISE)
+                .permission(Permission.ACCESS_FINE_LOCATION)
+                .permission(Permission.ACCESS_COARSE_LOCATION)
+                .interceptor(new PermissionInterceptor()) // Optional for custom logic
+                .request(new OnPermissionCallback() {
+                    @Override
+                    public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
+                        if (allGranted) {
+                            // All permissions granted: Initialize or reload the WebView
+                            initWebView();
+                        } else {
+                            // Show an alert or handle partial permission denial
+//                            Toast.makeText(MainActivity.class, "Location permission is required for this feature.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
+                        // Handle denied permissions
+//                        Toast.makeText(MainActivity.this, "Permissions Denied. Enable them in settings.", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
+
 
     @Override
     public void initWebView() {

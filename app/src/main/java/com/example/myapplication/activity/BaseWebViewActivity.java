@@ -1,13 +1,11 @@
 package com.example.myapplication.activity;
 
-import static com.example.myapplication.constants.RetCode.BLE_DEVICE_NOT_FIND;
 import static com.example.myapplication.constants.RetCode.BLE_IS_NOT_ENABLED;
 import static com.example.myapplication.constants.RetCode.BLE_MAC_ADDRESS_NOT_MATCH;
 import static com.example.myapplication.constants.RetCode.BLE_NOT_CONNECTED;
 import static com.example.myapplication.constants.RetCode.BLE_NOT_SUPPORTED;
 import static com.example.myapplication.constants.RetCode.BLE_SERVICE_NOT_INIT;
 import static com.example.myapplication.constants.RetCode.FAIL;
-import static com.example.myapplication.constants.RetCode.METHOD_INVOCATION_EXCEPTION;
 import static com.example.myapplication.constants.RetCode.MQTT_CONNECT_FAIL;
 import static com.example.myapplication.constants.RetCode.MQTT_CURRENT_NOT_CONNECTED;
 import static com.example.myapplication.constants.RetCode.PARAMETER_ERROR;
@@ -15,7 +13,6 @@ import static com.example.myapplication.constants.RetCode.PERMISSION_ERROR;
 import static com.example.myapplication.constants.RetCode.RUNTIME_EXCEPTION;
 import static com.example.myapplication.constants.RetCode.USER_CANCELED_OPERATION;
 
-import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.content.ComponentName;
 import android.content.ContentValues;
@@ -24,7 +21,6 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.MediaStore;
@@ -34,27 +30,23 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
 
-import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultCallback;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
-import androidx.core.hardware.fingerprint.FingerprintManagerCompat;
 
 import com.example.myapplication.MainActivity;
 import com.example.myapplication.R;
+import com.example.myapplication.callback.InitBleDataCallBack;
 import com.example.myapplication.constants.Result;
-import com.example.myapplication.constants.RetCode;
 import com.example.myapplication.entity.BleDeviceInfo;
 import com.example.myapplication.entity.CharacteristicDomain;
 import com.example.myapplication.entity.MqttConfig;
 import com.example.myapplication.entity.ServicesPropertiesDomain;
 import com.example.myapplication.entity.event.EventBusMsg;
-import com.example.myapplication.entity.js.BleData;
+import com.example.myapplication.entity.js.CharacteristicDto;
+import com.example.myapplication.entity.js.ServicesPropertiesDto;
 import com.example.myapplication.entity.main.MainConfig;
 import com.example.myapplication.enums.DeviceConnStatEnum;
 import com.example.myapplication.enums.EventBusEnum;
@@ -85,17 +77,14 @@ import com.orhanobut.logger.Logger;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
-import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 
 public abstract class BaseWebViewActivity extends AppCompatActivity {
 
@@ -104,14 +93,13 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
     public BleService bleService;
     private int REQUEST_CODE_SCAN_ONE = 999;
     private int CHOOSE_PIC_REQUEST_CODE = 111;
-    private int REQUEST_CODE_OCR=222;
+    private int REQUEST_CODE_OCR = 222;
     private Uri takePhotoUri;
 
     private boolean SERVICE_BIND = false;
 
 
     private GpsService gpsService;
-
 
 
     @Override
@@ -133,14 +121,14 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
     ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-                bleService = ((BleService.BleServiceBinder) service).getService();
-                SERVICE_BIND = true;
+            bleService = ((BleService.BleServiceBinder) service).getService();
+            SERVICE_BIND = true;
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-                bleService = null;
-                SERVICE_BIND = false;
+            bleService = null;
+            SERVICE_BIND = false;
         }
     };
 
@@ -163,30 +151,28 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                 public void onCallBack(String data) {
                 }
             });
-        }
-        else if (message.getTagEnum() == EventBusEnum.BLE_CONNECT) {
+        } else if (message.getTagEnum() == EventBusEnum.BLE_CONNECT) {
             String macAddress = (String) message.getT();
             bridgeWebView.callHandler("bleConnectSuccessCallBack", macAddress, new CallBackFunction() {
                 @Override
                 public void onCallBack(String data) {
                 }
             });
-        }
-        else  if (message.getTagEnum() == EventBusEnum.BLE_CONNECT_FAIL) {
+        } else if (message.getTagEnum() == EventBusEnum.BLE_CONNECT_FAIL) {
             String macAddress = (String) message.getT();
             bridgeWebView.callHandler("bleConnectFailCallBack", macAddress, new CallBackFunction() {
                 @Override
                 public void onCallBack(String data) {
                 }
             });
-        }else if(message.getTagEnum() == EventBusEnum.MQTT_MSG_ARRIVED){
-            bridgeWebView.callHandler("mqttMsgArrivedCallBack", (String)message.getT(), new CallBackFunction() {
+        } else if (message.getTagEnum() == EventBusEnum.MQTT_MSG_ARRIVED) {
+            bridgeWebView.callHandler("mqttMsgArrivedCallBack", (String) message.getT(), new CallBackFunction() {
                 @Override
                 public void onCallBack(String data) {
                 }
             });
-        }else if(message.getTagEnum() == EventBusEnum.GPS_CHANGE){
-            bridgeWebView.callHandler("locationCallBack", (String)message.getT(), new CallBackFunction() {
+        } else if (message.getTagEnum() == EventBusEnum.GPS_CHANGE) {
+            bridgeWebView.callHandler("locationCallBack", (String) message.getT(), new CallBackFunction() {
                 @Override
                 public void onCallBack(String data) {
                 }
@@ -328,29 +314,99 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                 //JS传递给Android
                 if (bleService != null) {
                     BleDeviceUtil bleDeviceUtil = bleService.getBleDeviceUtil();
-                    String address = bleDeviceUtil.getBluetoothDevice().getAddress();
                     if (bleDeviceUtil != null && bleDeviceUtil.getConnectStat() == DeviceConnStatEnum.CONNECTED) {
+                        String address = bleDeviceUtil.getBluetoothDevice().getAddress();
                         if (address.equals(macAddress)) {
                             function.onCallBack(gson.toJson(Result.ok(true)));
                             ThreadPool.getExecutor().execute(new Runnable() {
                                 @Override
                                 public void run() {
-                                    Map<String, ServicesPropertiesDomain> resultMap = bleDeviceUtil.initData();
-                                    LogUtil.error("resultMap:" + gson.toJson(resultMap));
-                                    BaseWebViewActivity.this.runOnUiThread(new Runnable() {
+                                    bleDeviceUtil.initData(new InitBleDataCallBack() {
                                         @Override
-                                        public void run() {
-                                            BleData bleData = new BleData(bleDeviceUtil.getBluetoothDevice().getAddress(), new ArrayList<>(resultMap.values()));
-                                            bridgeWebView.callHandler("bleInitDataCallBack", gson.toJson(bleData), new CallBackFunction() {
+                                        public void onProgress(int total, int progress, CharacteristicDomain domain) {
+                                            BaseWebViewActivity.this.runOnUiThread(new Runnable() {
                                                 @Override
-                                                public void onCallBack(String data) {
+                                                public void run() {
+                                                    Map<String, Object> map = new HashMap<>();
+                                                    map.put("total", total);
+                                                    map.put("progress", progress);
+                                                    map.put("data", domain.toString());
+                                                    map.put("macAddress", bleDeviceUtil.getBluetoothDevice().getAddress());
+                                                    bridgeWebView.callHandler("bleInitDataOnProgressCallBack", gson.toJson(map), new CallBackFunction() {
+                                                        @Override
+                                                        public void onCallBack(String data) {
 
+                                                        }
+                                                    });
                                                 }
                                             });
-                                            ServicesPropertiesDomain remove = bleData.getDataList().remove(0);
-                                            LogUtil.error("resultMap:" + gson.toJson(remove));
+                                        }
+
+                                        @Override
+                                        public void onComplete(Map<String, ServicesPropertiesDomain> data) {
+                                            BaseWebViewActivity.this.runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    Collection<ServicesPropertiesDomain> values = data.values();
+                                                    List<ServicesPropertiesDto> dataList = null;
+                                                    for (ServicesPropertiesDomain domain : values) {
+                                                        ServicesPropertiesDto servicesPropertiesDto = new ServicesPropertiesDto();
+                                                        servicesPropertiesDto.setUuid(domain.getUuid());
+                                                        servicesPropertiesDto.setServiceNameEnum(domain.getServiceNameEnum());
+                                                        servicesPropertiesDto.setServiceProperty(domain.getServiceProperty());
+                                                        if (dataList == null)
+                                                            dataList = new ArrayList<>();
+                                                        dataList.add(servicesPropertiesDto);
+                                                        Collection<CharacteristicDomain> values1 = domain.getCharacterMap().values();
+                                                        for (CharacteristicDomain characteristicDomain : values1) {
+                                                            CharacteristicDto characteristicDto = new CharacteristicDto();
+                                                            characteristicDto.setDesc(characteristicDomain.getDesc());
+                                                            characteristicDto.setUuid(characteristicDomain.getUuid());
+                                                            characteristicDto.setDescriptors(new ArrayList<>(characteristicDomain.getDescMap().values()));
+                                                            characteristicDto.setName(characteristicDomain.getName());
+                                                            characteristicDto.setServiceUuid(characteristicDomain.getServiceUuid());
+                                                            characteristicDto.setProperties(characteristicDomain.getProperties());
+                                                            characteristicDto.setRealVal(characteristicDto.getRealVal());
+                                                            characteristicDto.setValType(characteristicDomain.getValType());
+                                                            characteristicDto.setValues(characteristicDomain.getValues());
+                                                            if(servicesPropertiesDto.getCharacteristicList()==null){
+                                                                servicesPropertiesDto.setCharacteristicList(new ArrayList<>());
+                                                            }
+                                                            servicesPropertiesDto.getCharacteristicList().add(characteristicDto);
+                                                        }
+                                                    }
+                                                    Map<String,Object>obj=new HashMap<>();
+                                                    obj.put("macAddress",macAddress);
+                                                    obj.put("dataList",dataList);
+                                                    bridgeWebView.callHandler("bleInitDataOnCompleteCallBack", gson.toJson(obj), new CallBackFunction() {
+                                                        @Override
+                                                        public void onCallBack(String data) {
+
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        }
+
+                                        @Override
+                                        public void onFailure(String error) {
+                                            BaseWebViewActivity.this.runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    Map<String, Object> objectMap = new HashMap<>();
+                                                    objectMap.put("errorMsg", error);
+                                                    objectMap.put("macAddress", bleDeviceUtil.getBluetoothDevice().getAddress());
+                                                    bridgeWebView.callHandler("bleInitDataFailureCallBack", gson.toJson(objectMap), new CallBackFunction() {
+                                                        @Override
+                                                        public void onCallBack(String data) {
+
+                                                        }
+                                                    });
+                                                }
+                                            });
                                         }
                                     });
+
                                 }
                             });
                         } else {
@@ -696,15 +752,15 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                     int qos = jsonObject.getInt("qos");
                     MqttClientUtil mqttClientUtil = bleService.getMqttClientUtil();
 
-                    if(mqttClientUtil==null||!mqttClientUtil.isConnected()){
+                    if (mqttClientUtil == null || !mqttClientUtil.isConnected()) {
                         function.onCallBack(gson.toJson(Result.fail(MQTT_CURRENT_NOT_CONNECTED, false)));
                         return;
                     }
                     boolean subscribe = mqttClientUtil.subscribe(topic, qos);
-                    if(subscribe){
+                    if (subscribe) {
                         function.onCallBack(gson.toJson(Result.ok(true)));
-                    }else{
-                        function.onCallBack(gson.toJson(Result.fail(FAIL,false)));
+                    } else {
+                        function.onCallBack(gson.toJson(Result.fail(FAIL, false)));
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -721,15 +777,15 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                     String topic = jsonObject.getString("topic");
                     MqttClientUtil mqttClientUtil = bleService.getMqttClientUtil();
 
-                    if(mqttClientUtil==null||!mqttClientUtil.isConnected()){
+                    if (mqttClientUtil == null || !mqttClientUtil.isConnected()) {
                         function.onCallBack(gson.toJson(Result.fail(MQTT_CURRENT_NOT_CONNECTED, false)));
                         return;
                     }
                     boolean subscribe = mqttClientUtil.unSubscribe(topic);
-                    if(subscribe){
+                    if (subscribe) {
                         function.onCallBack(gson.toJson(Result.ok(true)));
-                    }else{
-                        function.onCallBack(gson.toJson(Result.fail(FAIL,false)));
+                    } else {
+                        function.onCallBack(gson.toJson(Result.fail(FAIL, false)));
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -747,15 +803,15 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                     String content = jsonObject.getString("content");
                     int qos = jsonObject.getInt("qos");
                     MqttClientUtil mqttClientUtil = bleService.getMqttClientUtil();
-                    if(mqttClientUtil==null||!mqttClientUtil.isConnected()){
+                    if (mqttClientUtil == null || !mqttClientUtil.isConnected()) {
                         function.onCallBack(gson.toJson(Result.fail(MQTT_CURRENT_NOT_CONNECTED, false)));
                         return;
                     }
-                    boolean subscribe = mqttClientUtil.publish(topic,qos,content.getBytes(StandardCharsets.UTF_8));
-                    if(subscribe){
+                    boolean subscribe = mqttClientUtil.publish(topic, qos, content.getBytes(StandardCharsets.UTF_8));
+                    if (subscribe) {
                         function.onCallBack(gson.toJson(Result.ok(true)));
-                    }else{
-                        function.onCallBack(gson.toJson(Result.fail(FAIL,false)));
+                    } else {
+                        function.onCallBack(gson.toJson(Result.fail(FAIL, false)));
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -765,7 +821,6 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
         });
 
 
-
         bridgeWebView.registerHandler("saveParam", new BridgeHandler() {
             @Override
             public void handler(String data, CallBackFunction function) {
@@ -773,7 +828,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                     JSONObject jsonObject = new JSONObject(data);
                     String key = jsonObject.getString("key");
                     String value = jsonObject.getString("value");
-                    SharedPreferencesUtils.setParam(BaseWebViewActivity.this,key,value);
+                    SharedPreferencesUtils.setParam(BaseWebViewActivity.this, key, value);
                     function.onCallBack(gson.toJson(Result.ok(true)));
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -788,7 +843,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                 try {
                     JSONObject jsonObject = new JSONObject(data);
                     String key = jsonObject.getString("key");
-                    String value=(String)SharedPreferencesUtils.getParam(BaseWebViewActivity.this, key, "");
+                    String value = (String) SharedPreferencesUtils.getParam(BaseWebViewActivity.this, key, "");
                     function.onCallBack(gson.toJson(Result.ok(value)));
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -813,20 +868,19 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
         });
 
 
-
         bridgeWebView.registerHandler("fingerprintVerification", new BridgeHandler() {
             @Override
             public void handler(String data, CallBackFunction function) {
                 function.onCallBack(gson.toJson(Result.ok(true)));
 
-                BiometricPrompt  biometricPrompt = new BiometricPrompt(BaseWebViewActivity.this,
+                BiometricPrompt biometricPrompt = new BiometricPrompt(BaseWebViewActivity.this,
                         ContextCompat.getMainExecutor(BaseWebViewActivity.this), new BiometricPrompt.AuthenticationCallback() {
                     @Override
                     public void onAuthenticationError(int errorCode,
                                                       @NonNull CharSequence errString) {
                         super.onAuthenticationError(errorCode, errString);
                         Logger.e("Authentication error: " + errString);
-                        bridgeWebView.callHandler("fingerprintVerificationCallBack", gson.toJson(Result.fail(FAIL.getCode(),"Authentication error: " + errString,false)), new CallBackFunction() {
+                        bridgeWebView.callHandler("fingerprintVerificationCallBack", gson.toJson(Result.fail(FAIL.getCode(), "Authentication error: " + errString, false)), new CallBackFunction() {
                             @Override
                             public void onCallBack(String data) {
                             }
@@ -852,7 +906,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                         super.onAuthenticationFailed();
                         Logger.e("Authentication failed! ");
 
-                        bridgeWebView.callHandler("fingerprintVerificationCallBack", gson.toJson(Result.fail(FAIL.getCode(),"Authentication failed!",false)), new CallBackFunction() {
+                        bridgeWebView.callHandler("fingerprintVerificationCallBack", gson.toJson(Result.fail(FAIL.getCode(), "Authentication failed!", false)), new CallBackFunction() {
                             @Override
                             public void onCallBack(String data) {
                             }
@@ -872,14 +926,14 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
             @Override
             public void handler(String data, CallBackFunction function) {
                 try {
-                    if(data ==null||data.isEmpty()){
+                    if (data == null || data.isEmpty()) {
                         function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
                         return;
                     }
                     Uri uri = ImageUtil.saceCacheImageAndGetUri(BaseWebViewActivity.this, ImageUtil.base64ImgTrimPre(data));
-                    Intent intent = new Intent(BaseWebViewActivity.this,OcrActivity.class);
+                    Intent intent = new Intent(BaseWebViewActivity.this, OcrActivity.class);
                     intent.putExtra("uri", uri.toString());
-                    startActivityForResult(intent,REQUEST_CODE_OCR);
+                    startActivityForResult(intent, REQUEST_CODE_OCR);
                     function.onCallBack(gson.toJson(Result.ok(true)));
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -892,7 +946,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
             @Override
             public void handler(String data, CallBackFunction function) {
                 try {
-                    if(data ==null||data.isEmpty()){
+                    if (data == null || data.isEmpty()) {
                         function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, false)));
                         return;
                     }
@@ -901,7 +955,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                     ThreadPool.getExecutor().execute(new Runnable() {
                         @Override
                         public void run() {
-                            ImageUtil.saveImageToGallery(BaseWebViewActivity.this,data);
+                            ImageUtil.saveImageToGallery(BaseWebViewActivity.this, data);
                             BaseWebViewActivity.this.runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
@@ -927,7 +981,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                                 @Override
                                 public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
                                     if (!allGranted) {
-                                        function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR,false)));
+                                        function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR, false)));
                                         return;
                                     }
                                     bleService.startGps();
@@ -952,7 +1006,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                                 @Override
                                 public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
                                     if (!allGranted) {
-                                        function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR,false)));
+                                        function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR, false)));
                                         return;
                                     }
                                     function.onCallBack(gson.toJson(Result.ok(true)));
@@ -1157,7 +1211,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                 });
             }
         }
-        if(requestCode==REQUEST_CODE_OCR&& resultCode == RESULT_OK){
+        if (requestCode == REQUEST_CODE_OCR && resultCode == RESULT_OK) {
             String resultData = data.getStringExtra("ocrStr");
             // 处理结果
             bridgeWebView.callHandler("openOcrCallBack", resultData, new CallBackFunction() {

@@ -14,10 +14,10 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattService;
 import android.content.Context;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.example.myapplication.callback.InitBleDataCallBack;
 import com.example.myapplication.constants.DataConvert;
 import com.example.myapplication.constants.Result;
 import com.example.myapplication.entity.CharacteristicDomain;
@@ -114,23 +114,35 @@ public class BleDeviceUtil {
         return servicesPropertiesDomain;
     }
 
-    public Map<String, ServicesPropertiesDomain> initData() {
-        Collection<ServicesPropertiesDomain> values = serviceDataDtoMap.values();
-        for (ServicesPropertiesDomain servicesPropertiesDomain : values) {
-            Map<String, CharacteristicDomain> characterMap = servicesPropertiesDomain.getCharacterMap();
-            Collection<CharacteristicDomain> chValues = characterMap.values();
-            String serviceUUID = servicesPropertiesDomain.getUuid();
-            for (CharacteristicDomain characteristicDomain : chValues) {
-                String chUUID = characteristicDomain.getUuid();
-                Map<String, DescriptorDomain> descMap = characteristicDomain.getDescMap();
-                Collection<DescriptorDomain> descValues = descMap.values();
-                for (DescriptorDomain descriptorDomain : descValues) {
-                    readDescriptor(serviceUUID, chUUID, descriptorDomain.getUuid());
-                }
-                readCharacteristic(serviceUUID, chUUID);
+    public synchronized void initData(InitBleDataCallBack callBack) {
+        try {
+            Collection<ServicesPropertiesDomain> values = serviceDataDtoMap.values();
+            int totalCount = 0;
+            int current = 0;
+            for (ServicesPropertiesDomain servicesPropertiesDomain : values) {
+                totalCount += servicesPropertiesDomain.getCharacterMap().values().size();
             }
+            for (ServicesPropertiesDomain servicesPropertiesDomain : values) {
+                Map<String, CharacteristicDomain> characterMap = servicesPropertiesDomain.getCharacterMap();
+                Collection<CharacteristicDomain> chValues = characterMap.values();
+                String serviceUUID = servicesPropertiesDomain.getUuid();
+                for (CharacteristicDomain characteristicDomain : chValues) {
+                    String chUUID = characteristicDomain.getUuid();
+                    Map<String, DescriptorDomain> descMap = characteristicDomain.getDescMap();
+                    Collection<DescriptorDomain> descValues = descMap.values();
+                    for (DescriptorDomain descriptorDomain : descValues) {
+                        readDescriptor(serviceUUID, chUUID, descriptorDomain.getUuid());
+                    }
+                    readCharacteristic(serviceUUID, chUUID);
+                    current++;
+                    callBack.onProgress(totalCount, current, characteristicDomain);
+                }
+            }
+            callBack.onComplete(serviceDataDtoMap);
+        } catch (Exception e) {
+            e.printStackTrace();
+            callBack.onFailure(e.getMessage());
         }
-        return serviceDataDtoMap;
     }
 
     @SuppressLint("MissingPermission")
@@ -150,7 +162,7 @@ public class BleDeviceUtil {
     @SuppressLint("MissingPermission")
     public synchronized Result<Void> writeCharacteristic(String serviceUUID, String characteristicUUID, byte[] value) throws ExecutionException, InterruptedException {
         notifyBuff.delete(0, notifyBuff.length());
-        if (connected == DeviceConnStatEnum.CONNECTED) {
+        if (connected == DeviceConnStatEnum.CONNECTED && bluetoothGatt != null) {
             BluetoothGattService service = bluetoothGatt.getService(UUID.fromString(serviceUUID));
             if (service != null) {
                 BluetoothGattCharacteristic characteristic = service.getCharacteristic(UUID.fromString(characteristicUUID));
@@ -178,7 +190,7 @@ public class BleDeviceUtil {
 
     @SuppressLint("MissingPermission")
     public synchronized Result<CharacteristicDomain> readCharacteristic(String serviceUUID, String characteristicUUID) {
-        if (connected == DeviceConnStatEnum.CONNECTED) {
+        if (connected == DeviceConnStatEnum.CONNECTED && bluetoothGatt != null) {
             BluetoothGattService service = bluetoothGatt.getService(UUID.fromString(serviceUUID));
             if (service != null) {
                 BluetoothGattCharacteristic characteristic = service.getCharacteristic(UUID.fromString(characteristicUUID));
@@ -206,7 +218,7 @@ public class BleDeviceUtil {
 
     @SuppressLint("MissingPermission")
     public synchronized Result<CharacteristicDomain> setCharacteristicNotification(String serviceUUID, String characteristicUUID, String descriptorUUID, Boolean enable) {
-        if (connected == DeviceConnStatEnum.CONNECTED) {
+        if (connected == DeviceConnStatEnum.CONNECTED && bluetoothGatt != null) {
             BluetoothGattService service = bluetoothGatt.getService(UUID.fromString(serviceUUID));
             if (service != null) {
                 BluetoothGattCharacteristic characteristic = service.getCharacteristic(UUID.fromString(characteristicUUID));
@@ -263,7 +275,7 @@ public class BleDeviceUtil {
      */
     @SuppressLint("MissingPermission")
     public synchronized Result<CharacteristicDomain> enableIndicateNotification(String serviceUUID, String characteristicUUID, Boolean enable) {
-        if (connected == DeviceConnStatEnum.CONNECTED) {
+        if (connected == DeviceConnStatEnum.CONNECTED && bluetoothGatt != null) {
             BluetoothGattService service = bluetoothGatt.getService(UUID.fromString(serviceUUID));
             if (service != null) {
                 BluetoothGattCharacteristic characteristic = service.getCharacteristic(UUID.fromString(characteristicUUID));
@@ -310,7 +322,7 @@ public class BleDeviceUtil {
 
     @SuppressLint("MissingPermission")
     public synchronized Result<DescriptorDomain> readDescriptor(String serviceUUID, String characteristicUUID, String descriptorUUID) {
-        if (connected == DeviceConnStatEnum.CONNECTED) {
+        if (connected == DeviceConnStatEnum.CONNECTED && bluetoothGatt != null) {
             BluetoothGattService service = bluetoothGatt.getService(UUID.fromString(serviceUUID));
             if (service != null) {
                 BluetoothGattCharacteristic characteristic = service.getCharacteristic(UUID.fromString(characteristicUUID));
@@ -344,7 +356,7 @@ public class BleDeviceUtil {
 
     @SuppressLint("MissingPermission")
     public synchronized Result<DescriptorDomain> writeDescriptor(String serviceUUID, String characteristicUUID, String descriptorUUID, byte[] data) {
-        if (connected == DeviceConnStatEnum.CONNECTED) {
+        if (connected == DeviceConnStatEnum.CONNECTED && bluetoothGatt != null) {
             BluetoothGattService service = bluetoothGatt.getService(UUID.fromString(serviceUUID));
             if (service != null) {
                 BluetoothGattCharacteristic characteristic = service.getCharacteristic(UUID.fromString(characteristicUUID));
@@ -416,22 +428,22 @@ public class BleDeviceUtil {
             if (newState == BluetoothGattServer.STATE_CONNECTED) {
                 connected = DeviceConnStatEnum.CONNECTED;
                 gatt.discoverServices();
-                try {
-                    setMtu(64);
-                } catch (Exception e) {
-                }
+                bluetoothGatt = gatt;
             } else {//蓝牙断开
                 connected = DeviceConnStatEnum.DISCONNECTED;
+                bluetoothGatt = null;
             }
         }
 
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             super.onServicesDiscovered(gatt, status);
+
+
             //可以开始进行service读写了
             LogUtil.debug("BluetoothGattCallback onServicesDiscovered:" + status);
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d("BleDeviceUtil", "Services discovered:");
+
                 List<BluetoothGattService> services = gatt.getServices();
                 if (services != null && services.size() > 0) {
                     for (int i = 0; i < services.size(); i++) {
@@ -502,9 +514,13 @@ public class BleDeviceUtil {
                         }
                     }
                 }
-                bluetoothGatt = gatt;
+                if (countDownLatch != null) countDownLatch.countDown();
+                try {
+                    setMtu(64);
+                } catch (Exception e) {
+                }
             }
-            if (countDownLatch != null) countDownLatch.countDown();
+
         }
 
         @Override
@@ -529,7 +545,6 @@ public class BleDeviceUtil {
             } catch (Exception e) {
                 e.printStackTrace();
                 LogUtil.error("DataConvert.convert2Obj ====>" + new Gson().toJson(characteristicDataDto));
-
             }
         }
 
