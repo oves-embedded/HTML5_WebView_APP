@@ -8,40 +8,37 @@
     <EditText
         android:id="@+id/etWebsite"
         android:layout_width="match_parent"
-        android:layout_height="45dp"
-        />
+        android:layout_height="45dp" />
 
     <Button
         android:id="@+id/btnWebSite"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="open the website"
-        android:layout_gravity="center"/>
+        android:layout_gravity="center"
+        android:text="open the website" />
 
     <Button
         android:id="@+id/btnDemo"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="open the demo"
-        android:layout_gravity="center"/>
+        android:layout_gravity="center"
+        android:text="open the demo" />
 
 
     <Button
         android:id="@+id/btnImageCropper"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Image Cropper"
         android:layout_gravity="center"
-        android:visibility="gone"
-        />
+        android:text="Image Cropper"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/btnBleScanner"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Ble Scanner Demo"
         android:layout_gravity="center"
-        />
+        android:text="Ble Scanner Demo" />
 
 
 </LinearLayout>
