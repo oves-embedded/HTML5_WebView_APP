@@ -166,42 +166,6 @@ public class WebViewActivity extends BaseWebViewActivity {
                 });
     }
 
-
-//    @Override
-//    public void initWebView() {
-//        bridgeWebView = findViewById(R.id.bridgeWebView);
-//        bridgeWebView.getSettings().setBuiltInZoomControls(false); //显示放大缩小 controler
-//        bridgeWebView.setNetworkAvailable(true);
-//
-//        bridgeWebView.setWebViewClient(new BridgeWebViewClient(bridgeWebView) {
-//            // 修复 页面还没加载完成，注册代码还没初始完成，就调用了callHandle
-//            @Override
-//            public void onPageFinished(WebView view, String url) {
-//                super.onPageFinished(view, url);
-//                bridgeWebView.callHandler("print", "hello! this from android!", new CallBackFunction() {
-//                    @Override
-//                    public void onCallBack(String data) {
-//                        Toaster.show(data);
-//                    }
-//                });
-//            }
-//
-//            @Override
-//            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-//                super.onReceivedError(view, request, error);
-//            }
-//        });
-//        String url = getIntent().getStringExtra("url");
-//        if (TextUtils.isEmpty(url)) {
-//            bridgeWebView.loadUrl("file:///android_asset/webview/index.html");//h5地址
-//        } else {
-//            bridgeWebView.loadUrl(url);
-//        }
-//    }
-
-
-
-
     @Override
     public void registerMethod() {
         if (bridgeWebView != null) {
@@ -239,6 +203,5 @@ public class WebViewActivity extends BaseWebViewActivity {
             super.onBackPressed();
         }
     }
-
 
 }
