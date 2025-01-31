@@ -114,26 +114,71 @@ public class BleDeviceUtil {
         return servicesPropertiesDomain;
     }
 
+//    public synchronized void initData(InitBleDataCallBack callBack) {
+//        try {
+//            Collection<ServicesPropertiesDomain> values = serviceDataDtoMap.values();
+//            int totalCount = 0;
+//            int current = 0;
+//            for (ServicesPropertiesDomain servicesPropertiesDomain : values) {
+//                totalCount += servicesPropertiesDomain.getCharacterMap().values().size();
+//            }
+//            for (ServicesPropertiesDomain servicesPropertiesDomain : values) {
+//                Map<String, CharacteristicDomain> characterMap = servicesPropertiesDomain.getCharacterMap();
+//                Collection<CharacteristicDomain> chValues = characterMap.values();
+//                String serviceUUID = servicesPropertiesDomain.getUuid();
+//                for (CharacteristicDomain characteristicDomain : chValues) {
+//                    String chUUID = characteristicDomain.getUuid();
+//                    Map<String, DescriptorDomain> descMap = characteristicDomain.getDescMap();
+//                    Collection<DescriptorDomain> descValues = descMap.values();
+//                    for (DescriptorDomain descriptorDomain : descValues) {
+//                        readDescriptor(serviceUUID, chUUID, descriptorDomain.getUuid());
+//                    }
+//                    readCharacteristic(serviceUUID, chUUID);
+//                    current++;
+//                    callBack.onProgress(totalCount, current, characteristicDomain);
+//                }
+//            }
+//            callBack.onComplete(serviceDataDtoMap);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            callBack.onFailure(e.getMessage());
+//        }
+//    }
+
     public synchronized void initData(InitBleDataCallBack callBack) {
         try {
             Collection<ServicesPropertiesDomain> values = serviceDataDtoMap.values();
             int totalCount = 0;
             int current = 0;
+
             for (ServicesPropertiesDomain servicesPropertiesDomain : values) {
                 totalCount += servicesPropertiesDomain.getCharacterMap().values().size();
             }
+
             for (ServicesPropertiesDomain servicesPropertiesDomain : values) {
                 Map<String, CharacteristicDomain> characterMap = servicesPropertiesDomain.getCharacterMap();
                 Collection<CharacteristicDomain> chValues = characterMap.values();
                 String serviceUUID = servicesPropertiesDomain.getUuid();
+
                 for (CharacteristicDomain characteristicDomain : chValues) {
                     String chUUID = characteristicDomain.getUuid();
                     Map<String, DescriptorDomain> descMap = characteristicDomain.getDescMap();
                     Collection<DescriptorDomain> descValues = descMap.values();
+
                     for (DescriptorDomain descriptorDomain : descValues) {
                         readDescriptor(serviceUUID, chUUID, descriptorDomain.getUuid());
                     }
-                    readCharacteristic(serviceUUID, chUUID);
+
+                    new Thread(() -> {
+                        readCharacteristic(serviceUUID, chUUID);
+                        try {
+                            Thread.sleep(1000); // Wait for read to complete
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        System.out.println("🚀 Updated Real Value AFTER Read: " + characteristicDomain.getRealVal());
+                    }).start();
+
                     current++;
                     callBack.onProgress(totalCount, current, characteristicDomain);
                 }
@@ -526,27 +571,68 @@ public class BleDeviceUtil {
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
+
             String characteristicUUID = characteristic.getUuid().toString();
             String serviceUUID = characteristic.getService().getUuid().toString();
             CharacteristicDomain characteristicDataDto = serviceDataDtoMap.get(serviceUUID).getCharacterMap().get(characteristicUUID);
 
-            try {
-                if (characteristic.getValue() == null || characteristic.getValue().length <= 0) {
-                    LogUtil.debug("BluetoothGattCallback onCharacteristicRead：value is null");
-                    return;
-                } else {
-                    LogUtil.debug("BluetoothGattCallback onCharacteristicRead  " + (characteristicDataDto.getName() != null ? characteristicDataDto.getName() : "?") + "   :" + ByteUtil.bytes2HexString(characteristic.getValue()));
-                }
-                characteristicDataDto.setValues(characteristic.getValue());
-                characteristicDataDto.setRealVal(DataConvert.convert2Obj(characteristicDataDto.getValues(), characteristicDataDto.getValType()));
-                if (countDownLatch != null) {
-                    countDownLatch.countDown();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                LogUtil.error("DataConvert.convert2Obj ====>" + new Gson().toJson(characteristicDataDto));
+            // 🔹 Log characteristic UUID
+            System.out.println("✅ onCharacteristicRead called for UUID: " + characteristicUUID);
+
+            // Check if value is received
+            byte[] rawData = characteristic.getValue();
+            if (rawData == null || rawData.length == 0) {
+                System.out.println("⚠️ No Data Read from: " + characteristicUUID);
+                return;
             }
+
+            // 🔹 Log raw BLE data before conversion
+            System.out.println("📡 Raw BLE Data (Hex): " + bytesToHex(rawData));
+
+            // Store raw values
+            characteristicDataDto.setValues(rawData);
+
+            // Convert to real value
+            Object convertedValue = DataConvert.convert2Obj(rawData, characteristicDataDto.getValType());
+            characteristicDataDto.setRealVal(convertedValue);
+
+            // 🔹 Log converted real value
+            System.out.println("📡 Converted Real Value: " + convertedValue);
         }
+
+        // Utility function to convert byte array to Hex string
+        private String bytesToHex(byte[] bytes) {
+            StringBuilder sb = new StringBuilder();
+            for (byte b : bytes) {
+                sb.append(String.format("%02X ", b));
+            }
+            return sb.toString().trim();
+        }
+
+//        @Override
+//        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+//            super.onCharacteristicRead(gatt, characteristic, status);
+//            String characteristicUUID = characteristic.getUuid().toString();
+//            String serviceUUID = characteristic.getService().getUuid().toString();
+//            CharacteristicDomain characteristicDataDto = serviceDataDtoMap.get(serviceUUID).getCharacterMap().get(characteristicUUID);
+//
+//            try {
+//                if (characteristic.getValue() == null || characteristic.getValue().length <= 0) {
+//                    LogUtil.debug("BluetoothGattCallback onCharacteristicRead：value is null");
+//                    return;
+//                } else {
+//                    LogUtil.debug("BluetoothGattCallback onCharacteristicRead  " + (characteristicDataDto.getName() != null ? characteristicDataDto.getName() : "?") + "   :" + ByteUtil.bytes2HexString(characteristic.getValue()));
+//                }
+//                characteristicDataDto.setValues(characteristic.getValue());
+//                characteristicDataDto.setRealVal(DataConvert.convert2Obj(characteristicDataDto.getValues(), characteristicDataDto.getValType()));
+//                if (countDownLatch != null) {
+//                    countDownLatch.countDown();
+//                }
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//                LogUtil.error("DataConvert.convert2Obj ====>" + new Gson().toJson(characteristicDataDto));
+//            }
+//        }
 
         @Override
         public void onCharacteristicRead(@NonNull BluetoothGatt gatt, @NonNull BluetoothGattCharacteristic characteristic, @NonNull byte[] value, int status) {

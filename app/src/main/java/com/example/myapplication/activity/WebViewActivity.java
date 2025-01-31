@@ -85,8 +85,15 @@ public class WebViewActivity extends BaseWebViewActivity {
                 @Override
                 public void onPageFinished(WebView view, String url) {
                     super.onPageFinished(view, url);
+                    Log.d(TAG, "Page finished loading: " + url);
+
+                    // Register any methods needed for the bridge
                     registerMethod();
+
+                    // Send the initial message to the JS bridge
+                    sendInitialMessage();
                 }
+
 
                 @Override
                 public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
@@ -133,6 +140,8 @@ public class WebViewActivity extends BaseWebViewActivity {
                     Log.d(TAG, "Bridge initialization response: " + data);
                 }
             });
+        } else {
+            Log.e(TAG, "bridgeWebView is null. Cannot send initial message.");
         }
     }
 
