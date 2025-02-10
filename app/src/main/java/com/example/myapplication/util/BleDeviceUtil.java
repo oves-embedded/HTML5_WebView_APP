@@ -18,6 +18,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 
 import com.example.myapplication.callback.InitBleDataCallBack;
+import com.example.myapplication.callback.InitBleServiceDataCallBack;
 import com.example.myapplication.constants.DataConvert;
 import com.example.myapplication.constants.Result;
 import com.example.myapplication.entity.CharacteristicDomain;
@@ -98,20 +99,36 @@ public class BleDeviceUtil {
         }
     }
 
-    public synchronized ServicesPropertiesDomain initService(String serviceUUID) {
-        ServicesPropertiesDomain servicesPropertiesDomain = serviceDataDtoMap.get(serviceUUID);
-        Map<String, CharacteristicDomain> characterMap = servicesPropertiesDomain.getCharacterMap();
-        Collection<CharacteristicDomain> chValues = characterMap.values();
-        for (CharacteristicDomain characteristicDomain : chValues) {
-            String chUUID = characteristicDomain.getUuid();
-            Map<String, DescriptorDomain> descMap = characteristicDomain.getDescMap();
-            Collection<DescriptorDomain> descValues = descMap.values();
-            for (DescriptorDomain descriptorDomain : descValues) {
-                readDescriptor(serviceUUID, chUUID, descriptorDomain.getUuid());
+    public synchronized void initService(String serviceName, InitBleServiceDataCallBack callBack) {
+        try {
+            Collection<ServicesPropertiesDomain> values = serviceDataDtoMap.values();
+            ServicesPropertiesDomain servicesPropertiesDomain = null;
+            for (ServicesPropertiesDomain domain : values) {
+                boolean b = domain.getServiceNameEnum().getServiceName().equalsIgnoreCase(serviceName);
+                if (b) {
+                    servicesPropertiesDomain = domain;
+                }
             }
-            readCharacteristic(serviceUUID, chUUID);
+            if (servicesPropertiesDomain == null) throw new Exception("Service name not found!");
+            Map<String, CharacteristicDomain> characterMap = servicesPropertiesDomain.getCharacterMap();
+            Collection<CharacteristicDomain> chValues = characterMap.values();
+            int i = 0;
+            for (CharacteristicDomain characteristicDomain : chValues) {
+                String chUUID = characteristicDomain.getUuid();
+                Map<String, DescriptorDomain> descMap = characteristicDomain.getDescMap();
+                Collection<DescriptorDomain> descValues = descMap.values();
+                for (DescriptorDomain descriptorDomain : descValues) {
+                    readDescriptor(servicesPropertiesDomain.getUuid(), chUUID, descriptorDomain.getUuid());
+                }
+                readCharacteristic(servicesPropertiesDomain.getUuid(), chUUID);
+                i++;
+                callBack.onProgress(chValues.size(), i, characteristicDomain);
+            }
+            callBack.onComplete(servicesPropertiesDomain);
+        } catch (Exception e) {
+            e.printStackTrace();
+            callBack.onFailure(e.getMessage());
         }
-        return servicesPropertiesDomain;
     }
 
     public synchronized void initData(InitBleDataCallBack callBack) {

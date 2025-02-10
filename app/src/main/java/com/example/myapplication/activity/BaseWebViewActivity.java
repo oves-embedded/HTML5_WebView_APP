@@ -38,6 +38,7 @@ import androidx.core.content.ContextCompat;
 import com.example.myapplication.MainActivity;
 import com.example.myapplication.R;
 import com.example.myapplication.callback.InitBleDataCallBack;
+import com.example.myapplication.callback.InitBleServiceDataCallBack;
 import com.example.myapplication.constants.Result;
 import com.example.myapplication.entity.BleDeviceInfo;
 import com.example.myapplication.entity.CharacteristicDomain;
@@ -307,6 +308,104 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
             }
         });
 
+        bridgeWebView.registerHandler("initServiceBleData", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                String serviceName = null, macAddress = null;
+                try {
+                    JSONObject jsonObject = new JSONObject(data);
+                    serviceName = jsonObject.getString("serviceName");
+                    macAddress = jsonObject.getString("macAddress");
+                } catch (Exception e) {
+                    function.onCallBack(gson.toJson(Result.fail(FAIL.getCode(), e.getMessage(), false)));
+                    return;
+                }
+
+                //JS传递给Android
+                if (bleService != null) {
+                    BleDeviceUtil bleDeviceUtil = bleService.getBleDeviceUtil();
+                    if (bleDeviceUtil != null && bleDeviceUtil.getConnectStat() == DeviceConnStatEnum.CONNECTED) {
+                        String address = bleDeviceUtil.getBluetoothDevice().getAddress();
+                        if (address.equals(macAddress)) {
+                            function.onCallBack(gson.toJson(Result.ok(true)));
+                            String finalServiceName = serviceName;
+                            ThreadPool.getExecutor().execute(new Runnable() {
+                                @Override
+                                public void run() {
+                                    bleDeviceUtil.initService(finalServiceName, new InitBleServiceDataCallBack() {
+                                        @Override
+                                        public void onProgress(int total, int progress, CharacteristicDomain domain) {
+                                            Map<String, Object> map = new HashMap<>();
+                                            map.put("total", total);
+                                            map.put("progress", progress);
+                                            map.put("data", domain);
+                                            map.put("macAddress", bleDeviceUtil.getBluetoothDevice().getAddress());
+                                            bridgeWebView.callHandler("bleInitServiceDataOnProgressCallBack", gson.toJson(map), new CallBackFunction() {
+                                                @Override
+                                                public void onCallBack(String data) {
+
+                                                }
+                                            });
+                                        }
+
+                                        @Override
+                                        public void onComplete(ServicesPropertiesDomain domain) {
+                                            ServicesPropertiesDto servicesPropertiesDto = new ServicesPropertiesDto();
+                                            servicesPropertiesDto.setUuid(domain.getUuid());
+                                            servicesPropertiesDto.setServiceNameEnum(domain.getServiceNameEnum());
+                                            servicesPropertiesDto.setServiceProperty(domain.getServiceProperty());
+
+                                            Collection<CharacteristicDomain> values1 = domain.getCharacterMap().values();
+                                            for (CharacteristicDomain characteristicDomain : values1) {
+                                                CharacteristicDto characteristicDto = new CharacteristicDto();
+                                                characteristicDto.setDesc(characteristicDomain.getDesc());
+                                                characteristicDto.setUuid(characteristicDomain.getUuid());
+                                                characteristicDto.setDescriptors(new ArrayList<>(characteristicDomain.getDescMap().values()));
+                                                characteristicDto.setName(characteristicDomain.getName());
+                                                characteristicDto.setServiceUuid(characteristicDomain.getServiceUuid());
+                                                characteristicDto.setProperties(characteristicDomain.getProperties());
+                                                characteristicDto.setRealVal(characteristicDomain.getRealVal());
+                                                characteristicDto.setValType(characteristicDomain.getValType());
+                                                characteristicDto.setValues(characteristicDomain.getValues());
+                                                if (servicesPropertiesDto.getCharacteristicList() == null) {
+                                                    servicesPropertiesDto.setCharacteristicList(new ArrayList<>());
+                                                }
+                                                servicesPropertiesDto.getCharacteristicList().add(characteristicDto);
+                                            }
+
+                                            bridgeWebView.callHandler("bleInitServiceDataOnCompleteCallBack", gson.toJson(servicesPropertiesDto), new CallBackFunction() {
+                                                @Override
+                                                public void onCallBack(String data) {
+
+                                                }
+                                            });
+
+                                        }
+
+                                        @Override
+                                        public void onFailure(String error) {
+                                            bridgeWebView.callHandler("bleInitServiceDataFailureCallBack", error, new CallBackFunction() {
+                                                @Override
+                                                public void onCallBack(String data) {
+
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        } else {
+                            function.onCallBack(gson.toJson(Result.fail(BLE_MAC_ADDRESS_NOT_MATCH, false)));
+                        }
+                    } else {
+                        function.onCallBack(gson.toJson(Result.fail(BLE_NOT_CONNECTED, false)));
+                    }
+                } else {
+                    function.onCallBack(gson.toJson(Result.fail(BLE_SERVICE_NOT_INIT, false)));
+                }
+            }
+        });
+
         bridgeWebView.registerHandler("initBleData", new BridgeHandler() {
             @Override
             public void handler(String macAddress, CallBackFunction function) {
@@ -365,7 +464,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                                                             characteristicDto.setName(characteristicDomain.getName());
                                                             characteristicDto.setServiceUuid(characteristicDomain.getServiceUuid());
                                                             characteristicDto.setProperties(characteristicDomain.getProperties());
-                                                            characteristicDto.setRealVal(characteristicDto.getRealVal());
+                                                            characteristicDto.setRealVal(characteristicDomain.getRealVal());
                                                             characteristicDto.setValType(characteristicDomain.getValType());
                                                             characteristicDto.setValues(characteristicDomain.getValues());
                                                             if(servicesPropertiesDto.getCharacteristicList()==null){

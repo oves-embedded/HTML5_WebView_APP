@@ -167,12 +167,17 @@
 						console.info(macAddress);
 						responseCallback(macAddress);
 
+						
+						let data={};
+						data.serviceName="ATT";//ATT/STS/DIA/CMD
+						data.macAddress="AB-SS-CC-AA-XX";
 						window.WebViewJavascriptBridge.callHandler(
-							'initBleData', macAddress,
+							'initServiceBleData', data,
 							function(responseData) {
-								console.info(responseData);
+								console.info("initServiceBleData:" + responseData);
 							}
 						);
+						
 					});
 					
 					
@@ -185,6 +190,23 @@
 					});
 					bridge.registerHandler("bleInitDataFailureCallBack", function(data, responseCallback) {
 						console.info(data);
+					});
+					/*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
+					
+					/*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
+					bridge.registerHandler("bleInitServiceDataOnProgressCallBack", function(data, responseCallback) {
+						console.info(data);
+						let obj = JSON.parse(data);
+						that.loadingTotal = obj.total;
+						that.loadingCurrent = obj.progress;
+					});
+					bridge.registerHandler("bleInitServiceDataOnCompleteCallBack", function(data, responseCallback) {
+						console.info(data);
+						that.loadingDialog.close();
+					});
+					bridge.registerHandler("bleInitServiceDataFailureCallBack", function(data, responseCallback) {
+						console.info(data);
+						that.loadingDialog.close();
 					});
 					/*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
 					
@@ -263,6 +285,17 @@
 						'initBleData', this.macAddress,
 						function(responseData) {
 							console.info(responseData);
+						}
+					);
+				},
+				initServiceBleData(serviceName) {
+					let data={};
+					data.serviceName=serviceName;//ATT/STS/DIA/CMD
+					data.macAddress="AB-SS-CC-AA-XX";
+					window.WebViewJavascriptBridge.callHandler(
+						'initServiceBleData', data,
+						function(responseData) {
+							console.info("initServiceBleData:" + responseData);
 						}
 					);
 				},
