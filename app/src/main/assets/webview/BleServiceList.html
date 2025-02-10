@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title></title>
+		<!-- <script src="https://unpkg.com/vue@next"></script> -->
+		<script src="js/v3.2.8/vue.global.prod.js" type="text/javascript" charset="utf-8"></script>
+		<script type="text/javascript" src="js/vconsole.min.js"></script>
+
+	<body style="width: 100%;height:100%;background-color: #000000;">
+			<div id="app"
+				style= display: flex;flex-direction: column;flex-wrap: wrap;justify-content: center;align-items: center;justify-items: center;">
+				<div v-for="(item,index) in serviceAttrList"
+					style="width: 100%; display: flex;flex-direction: column;align-items: flex-start;background-color: #ffffff;margin-top:20px;">
+					<div style="color: blue;">{{item.serviceNameEnum}}</div>
+					<div v-for="(item2,index2) in item.characteristicList"
+						style="width: 100%; display: flex;flex-direction: column;align-items: flex-start;background-color: #ffffff;margin-top:10px;">
+						<div>name:{{item2.name}}</div>
+						<div>value:{{item2.realVal}}</div>
+						<div>desc:{{item2.desc}}</div>
+					</div>
+				</div>
+			</div>
+	</body>
+	<script>
+		const App = {
+			data() {
+				return {
+					serviceAttrList:[],
+					macAddress:'',
+				}
+			},
+			mounted() {},
+			created() {
+				
+				this.connectWebViewJavascriptBridge(function(bridge) {
+					//
+					bridge.init(function(message, responseCallback) {
+						responseCallback("js success!");
+					});
+
+					/////////////////////////////////Android Call JS: Registering JavaScript methods for Android to call, while you can also declare more methods.//////////////////////////////////
+
+					bridge.registerHandler("print", function(data, responseCallback) {
+						console.info(data);
+						responseCallback(data);
+					});
+
+					bridge.registerHandler("findBleDeviceCallBack", function(data, responseCallback) {
+						console.info("findBleDeviceCallBack:" + data);
+						
+					});
+
+
+					bridge.registerHandler("bleConnectSuccessCallBack", function(macAddress, responseCallback) {
+
+						
+					});
+					bridge.registerHandler("bleConnectFailCallBack", function(macAddress, responseCallback) {
+					});
+
+					bridge.registerHandler("bleInitDataCallBack", function(data, responseCallback) {
+					});
+
+
+					/*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
+					bridge.registerHandler("bleInitDataOnProgressCallBack", function(data, responseCallback) {
+						let resp=JSON.parse(data);
+						console.info("progress===>"+(resp.progress/resp.total*100)+"%");
+
+					});
+					bridge.registerHandler("bleInitDataOnCompleteCallBack", function(data, responseCallback) {
+						console.info(data);
+						let resp=JSON.parse(data);
+						that.serviceAttrList=resp.dataList;
+					});
+					bridge.registerHandler("bleInitDataFailureCallBack", function(data, responseCallback) {
+						console.info(data);
+
+					});
+					/*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
+
+
+				})
+
+				//If calling Android’s method immediately after initialization, it needs a delay of about 500ms
+
+				this.macAddress = this.getQueryParams().macAddress;
+				console.info(this.macAddress)
+				
+				let that = this;
+				setTimeout(function() {
+					that.initBleData(that.macAddress);
+				}, 500); 
+
+
+
+			},
+			methods: {
+				/////////////////////////////////JS Call Android////////////////////////////////
+				startBleScan() {
+					this.bleDeviceList = [];
+					// 打开对话框
+					window.WebViewJavascriptBridge.callHandler(
+						'startBleScan', this.keyword,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				stopBleScan() {
+
+					window.WebViewJavascriptBridge.callHandler(
+						'stopBleScan', "",
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				connBleByMacAddress(item) {
+					this.macAddress = item.macAddress;
+					this.loadingDialog.showModal();
+					this.loadingMsg = 'Connecting Bluetooth device';
+					window.WebViewJavascriptBridge.callHandler(
+						'connBleByMacAddress', item.macAddress,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				initBleData(macAddress) {
+					window.WebViewJavascriptBridge.callHandler(
+						'initBleData', macAddress,
+						function(responseData) {
+							console.info("initBleData:" + responseData);
+						}
+					);
+				},
+
+				readBleCharacteristic() {
+					window.WebViewJavascriptBridge.callHandler(
+						'readBleCharacteristic', this.characteristicRead,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				writeBleCharacteristic() {
+					window.WebViewJavascriptBridge.callHandler(
+						'writeBleCharacteristic', this.characteristicWrite,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+
+				getScannedDevices() {
+					window.WebViewJavascriptBridge.callHandler(
+						'getScannedDevices', "",
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				toastMsg(msg) {
+					window.WebViewJavascriptBridge.callHandler(
+						'toastMsg', msg,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+
+
+
+
+				/////////////////////////////////JS Call Android:  end
+
+				//JS注册事件监听
+				connectWebViewJavascriptBridge(callback) {
+					if (window.WebViewJavascriptBridge) {
+						callback(WebViewJavascriptBridge)
+					} else {
+						document.addEventListener(
+							'WebViewJavascriptBridgeReady',
+							function() {
+								callback(WebViewJavascriptBridge)
+							},
+							false
+						);
+					}
+				},
+				
+				
+				getQueryParams() {
+				    const params = new URLSearchParams(window.location.search);
+				    const result = {};
+				    for (let [key, value] of params) {
+				        result[key] = value;
+				    }
+				    return result;
+				}
+
+			}
+
+		};
+		Vue.createApp(App).mount('#app');
+	</script>
+	<style>
+		/* 弹窗样式 */
+		dialog {
+			width: 300px;
+			padding: 20px;
+			border: none;
+			border-radius: 10px;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+			text-align: center;
+		}
+
+		/* 加载动画样式 */
+		.loader {
+			border: 8px solid #f3f3f3;
+			border-top: 8px solid #3498db;
+			border-radius: 50%;
+			width: 50px;
+			height: 50px;
+			animation: spin 2s linear infinite;
+			margin: 0 auto;
+		}
+
+		@keyframes spin {
+			0% {
+				transform: rotate(0deg);
+			}
+
+			100% {
+				transform: rotate(360deg);
+			}
+		}
+	</style>
+	</body>
+</html>
