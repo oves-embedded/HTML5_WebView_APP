@@ -59,7 +59,7 @@ jobs:
 
   create-releases:
     name: 🎉 Create release
-    needs: [ generating-release-apk ]
+    needs: [ generate-release-apk ]
     runs-on: ubuntu-latest
     steps:
       - name: Download APK from build
