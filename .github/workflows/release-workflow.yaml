@@ -50,7 +50,7 @@ jobs:
           gh release create "$NEW_TAG" "$apk_path" --title "Release $NEW_TAG" --notes "${{ env.RELEASE_NOTES }}"
 
       - name: Upload APK to S3
-        uses: jakejarvis/s3-sync-action@0.5.0
+        uses: jakejarvis/s3-sync-action@master
         with:
           args: --acl public-read --follow-symlinks
         env:
