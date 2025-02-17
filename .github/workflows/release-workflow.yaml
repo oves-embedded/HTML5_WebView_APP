@@ -28,6 +28,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4.2.2
+      - name: Make Gradle Executable
+        run: chmod +x ./gradlew
       - name: Lint Check
         run: ./gradlew lint
       - name: Generate lint report
@@ -48,6 +50,8 @@ jobs:
         with:
           distribution: "temurin"
           java-version: "11"
+      - name: Make Gradle Executable
+        run: chmod +x ./gradlew
       - name: Build Release APK
         run: ./gradle assembleRelease --stacktrace
       - name: Upload Release APK
