@@ -55,7 +55,7 @@ jobs:
       - name: Build Release APK
         run: ./gradle assembleRelease --stacktrace
       - name: Upload Release APK
-        uses: actions/upload-artifiact@v1
+        uses: actions/upload-artifiact@v4.6.0
         with:
           name: OVES App
           path: app/build/outputs/apk/release/app-release-unsigned.apk
@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download APK from build
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4.1.8
         with:
           name: Note-Me-Release
       - name: Get Last Tag from GitHub Environment
@@ -78,7 +78,7 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: actions/create-release@v1.1.4
         env:
           GITHUB_TOKEN: ${{secrets.G_TOKEN}}
         with:
