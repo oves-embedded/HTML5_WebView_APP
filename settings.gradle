@@ -1,8 +1,8 @@
 pluginManagement {
     repositories {
         gradlePluginPortal()
-        google()
-        mavenCentral()
+//        google()
+//        mavenCentral()
         maven { url 'https://maven.aliyun.com/repository/google' }
         maven { url 'https://maven.aliyun.com/repository/public' }
         maven { url 'https://developer.huawei.com/repo/' }

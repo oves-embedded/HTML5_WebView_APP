@@ -673,7 +673,7 @@ public class WebViewFragment extends Fragment {
             @Override
             public void handler(String requestCode, CallBackFunction function) {
 
-                XXPermissions.with(getActivity()).permission(Permission.BLUETOOTH_SCAN).permission(Permission.BLUETOOTH_CONNECT).permission(Permission.BLUETOOTH_ADVERTISE).permission(Permission.ACCESS_FINE_LOCATION).permission(Permission.ACCESS_COARSE_LOCATION).interceptor(new PermissionInterceptor()).request(new OnPermissionCallback() {
+                XXPermissions.with(getActivity()).permission(Permission.CAMERA, Permission.READ_MEDIA_IMAGES, Permission.READ_MEDIA_VIDEO, Permission.READ_MEDIA_AUDIO).interceptor(new PermissionInterceptor()).request(new OnPermissionCallback() {
                     @Override
                     public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
                         if (!allGranted) {
@@ -685,7 +685,11 @@ public class WebViewFragment extends Fragment {
 //                                    int i = ScanUtil.startScan(getActivity(), REQUEST_CODE_SCAN_ONE, new HmsScanAnalyzerOptions.Creator().create());
 //                                    Toaster.show(i);
 
-                            HmsScanAnalyzerOptions hmsScanAnalyzerOptions = new HmsScanAnalyzerOptions.Creator().create();
+                            HmsScanAnalyzerOptions.Creator creator = new HmsScanAnalyzerOptions.Creator();
+                            creator.setHmsScanTypes(HmsScan.ALL_SCAN_TYPE);
+                            creator.setShowGuide(true);
+                            creator.setPhotoMode(true);
+                            HmsScanAnalyzerOptions hmsScanAnalyzerOptions = creator.create();
                             Intent intent = new Intent(getActivity(), ScanKitActivity.class);
                             if (intent != null) {
                                 intent.putExtra("ScanFormatValue", hmsScanAnalyzerOptions.mode);

@@ -647,7 +647,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                     @Override
                     public void handler(String requestCode, CallBackFunction function) {
 
-                        XXPermissions.with(BaseWebViewActivity.this).permission(Permission.BLUETOOTH_SCAN).permission(Permission.BLUETOOTH_CONNECT).permission(Permission.BLUETOOTH_ADVERTISE).permission(Permission.ACCESS_FINE_LOCATION).permission(Permission.ACCESS_COARSE_LOCATION).interceptor(new PermissionInterceptor()).request(new OnPermissionCallback() {
+                        XXPermissions.with(BaseWebViewActivity.this).permission(Permission.CAMERA, Permission.READ_MEDIA_IMAGES, Permission.READ_MEDIA_VIDEO, Permission.READ_MEDIA_AUDIO).interceptor(new PermissionInterceptor()).request(new OnPermissionCallback() {
                             @Override
                             public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
                                 if (!allGranted) {
@@ -657,10 +657,16 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                                 REQUEST_CODE_SCAN_ONE = TextUtils.isEmpty(requestCode) ? 0 : Integer.valueOf(requestCode);
                                 //JS传递给Android
                                 try {
+
+//                                    HmsScanAnalyzerOptions options = new HmsScanAnalyzerOptions.Creator().setHmsScanTypes(HmsScan.ALL_SCAN_TYPE).create();
+//                                    ScanUtil.startScan(BaseWebViewActivity.this, REQUEST_CODE_SCAN_ONE, options);
 //                                    int i = ScanUtil.startScan(BaseWebViewActivity.this, REQUEST_CODE_SCAN_ONE, new HmsScanAnalyzerOptions.Creator().create());
 //                                    Toaster.show(i);
-
-                                    HmsScanAnalyzerOptions hmsScanAnalyzerOptions = new HmsScanAnalyzerOptions.Creator().create();
+                                    HmsScanAnalyzerOptions.Creator creator = new HmsScanAnalyzerOptions.Creator();
+                                    creator.setHmsScanTypes(HmsScan.ALL_SCAN_TYPE);
+                                    creator.setShowGuide(true);
+                                    creator.setPhotoMode(true);
+                                    HmsScanAnalyzerOptions hmsScanAnalyzerOptions =creator.create();
                                     Intent intent = new Intent(BaseWebViewActivity.this, ScanKitActivity.class);
                                     if (intent != null) {
                                         intent.putExtra("ScanFormatValue", hmsScanAnalyzerOptions.mode);
