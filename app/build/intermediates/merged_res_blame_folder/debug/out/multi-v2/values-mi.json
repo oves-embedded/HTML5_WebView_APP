@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.example.myapplication.app-mergeDebugResources-49:/values-mi/values-mi.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Bob\\.gradle\\caches\\transforms-3\\c3a8cfc339af37b8db9b8a227e1aafd7\\transformed\\jetified-scanplus-2.12.0.300\\res\\values-mi\\values-mi.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,131,216,342,509,556,627,690,764,845,900,959,1008,1099,1216,1295",
+                        "endColumns": "75,84,125,166,46,70,62,73,80,54,58,48,90,116,78,104",
+                        "endOffsets": "126,211,337,504,551,622,685,759,840,895,954,1003,1094,1211,1290,1395"
+                    }
+                }
+            ]
+        }
+    ]
+}

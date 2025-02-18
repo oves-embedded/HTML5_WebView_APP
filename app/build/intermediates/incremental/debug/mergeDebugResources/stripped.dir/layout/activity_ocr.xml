@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#f7f7f7">
+
+    <com.hjq.bar.TitleBar
+        android:id="@+id/titleBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:childVerticalPadding="8dp"
+        app:rightIcon="@drawable/icon_commit"
+        app:rightIconGravity="top"
+        app:rightIconHeight="20dp"
+        app:rightIconWidth="20dp"
+        app:rightTitle="Confirm"
+        app:rightTitleColor="#666666"
+        app:rightTitleSize="12sp"
+        app:title="OCR" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/shape_edittext"
+        android:gravity="center"
+        android:layout_margin="5dp">
+
+        <EditText
+            android:id="@+id/et_result"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:textSize="16sp"
+            android:background="@android:color/transparent"
+            android:layout_marginRight="10dp"
+            />
+
+        <ImageButton
+            android:id="@+id/ib_recognize"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@drawable/shape_img_btn"
+            />
+    </LinearLayout>
+
+    <com.theartofdev.edmodo.cropper.CropImageView
+        xmlns:custom="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/cropImageView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        />
+
+</LinearLayout>

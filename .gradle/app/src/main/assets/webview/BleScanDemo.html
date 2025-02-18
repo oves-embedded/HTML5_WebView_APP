@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title></title>
+		<!-- <script src="https://unpkg.com/vue@next"></script> -->
+		<script src="js/v3.2.8/vue.global.prod.js" type="text/javascript" charset="utf-8"></script>
+		<script type="text/javascript" src="js/vconsole.min.js"></script>
+
+	<body style="width: 100%;height:100%;background-color: #000000;">
+			<div id="app"
+				style="flex: 1;height: 80%; display: flex;flex-direction: column;flex-wrap: wrap;justify-content: center;align-items: center;justify-items: center;">
+
+				<div
+					style="height: 50px; display: flex;flex-direction: row;flex-wrap: wrap;justify-content: center;align-items: center;justify-items: center;">
+					<button style="height: 50px;margin-top: 10px;" @click="this.startBleScan">startBleScan</button>
+
+					<button style="height: 50px;margin-top: 10px;" @click="this.stopBleScan">stopBleScan</button>
+				</div>
+
+				<div v-for="(item,index) in bleDeviceList"
+					style="width: 100%;height: 60px; display: flex;flex-direction: row;flex-wrap: wrap;;align-items: center;background-color: #ffffff;margin-top:10px;justify-content:space-between">
+					<div>{{item.name}}</div>
+					<div>{{item.macAddress}}</div>
+					<button style="height: 50px;" @click="this.connBleByMacAddress(item)">connectBle</button>
+				</div>
+
+
+
+			</div>
+			<dialog id="loadingDialog">
+
+				<div>Connecting Bluetooth device</div>
+				<!-- <div class="loader"></div> -->
+				<progress :value="loadingCurrent" :max="loadingTotal"></progress>
+
+			</dialog>
+
+	</body>
+	<script>
+		const App = {
+			data() {
+				return {
+					bleDeviceList: [],
+					keyword: "OVES",
+					loadingDialog: null,
+					macAddress: '',
+
+				}
+			},
+			mounted() {},
+			created() {
+				// 获取对话框和按钮的引用
+				this.loadingDialog = document.getElementById('loadingDialog');
+
+				let that = this;
+				this.connectWebViewJavascriptBridge(function(bridge) {
+					//
+					bridge.init(function(message, responseCallback) {
+						responseCallback("js success!");
+					});
+
+					/////////////////////////////////Android Call JS: Registering JavaScript methods for Android to call, while you can also declare more methods.//////////////////////////////////
+
+					bridge.registerHandler("print", function(data, responseCallback) {
+						console.info(data);
+						responseCallback(data);
+					});
+
+					bridge.registerHandler("findBleDeviceCallBack", function(data, responseCallback) {
+						console.info("findBleDeviceCallBack:" + data);
+						var resp = JSON.parse(data);
+						var size = that.bleDeviceList.length;
+						for (var i = 0; i < size; i++) {
+							if (resp.macAddress == that.bleDeviceList[i].macAddress) {
+								that.bleDeviceList[i] = resp;
+								return;
+							}
+						}
+						that.bleDeviceList.push(resp);
+					});
+
+
+					bridge.registerHandler("bleConnectSuccessCallBack", function(macAddress, responseCallback) {
+						that.loadingMsg = 'Connect Success';
+
+						console.info("macAddress:" + macAddress);
+						console.info("that.macAddress:" + that.macAddress);
+						if (macAddress == that.macAddress) {
+							console.info("./BleServiceList.html?macAddress="+that.macAddress)
+							window.location.href = "./BleServiceList.html?macAddress="+that.macAddress;
+						} else {
+							that.loadingDialog.close();
+						}
+					});
+					bridge.registerHandler("bleConnectFailCallBack", function(macAddress, responseCallback) {
+						that.loadingDialog.close();
+						that.toastMsg("bleConnectFailCallBack");
+					});
+
+					bridge.registerHandler("bleInitDataCallBack", function(data, responseCallback) {
+						console.info(data);
+						responseCallback(macAddress);
+					});
+
+
+					/*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
+					bridge.registerHandler("bleInitDataOnProgressCallBack", function(data, responseCallback) {
+						console.info(data);
+						let obj = JSON.parse(data);
+						that.loadingTotal = obj.total;
+						that.loadingCurrent = obj.progress;
+					});
+					bridge.registerHandler("bleInitDataOnCompleteCallBack", function(data, responseCallback) {
+						console.info(data);
+						that.loadingDialog.close();
+					});
+					bridge.registerHandler("bleInitDataFailureCallBack", function(data, responseCallback) {
+						console.info(data);
+						that.loadingDialog.close();
+					});
+					/*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
+
+					
+					/*↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓*/
+					bridge.registerHandler("bleInitServiceDataOnProgressCallBack", function(data, responseCallback) {
+						console.info(data);
+						let obj = JSON.parse(data);
+						that.loadingTotal = obj.total;
+						that.loadingCurrent = obj.progress;
+					});
+					bridge.registerHandler("bleInitServiceDataOnCompleteCallBack", function(data, responseCallback) {
+						console.info(data);
+						that.loadingDialog.close();
+					});
+					bridge.registerHandler("bleInitServiceDataFailureCallBack", function(data, responseCallback) {
+						console.info(data);
+						that.loadingDialog.close();
+					});
+					/*↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑*/
+
+
+
+				})
+
+				//If calling Android’s method immediately after initialization, it needs a delay of about 500ms
+
+				// setTimeout(function() {
+				// 	toastMsg();
+				// }, 500); 
+
+
+
+			},
+			methods: {
+				/////////////////////////////////JS Call Android////////////////////////////////
+				startBleScan() {
+					this.bleDeviceList = [];
+					// 打开对话框
+					window.WebViewJavascriptBridge.callHandler(
+						'startBleScan', this.keyword,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				stopBleScan() {
+
+					window.WebViewJavascriptBridge.callHandler(
+						'stopBleScan', "",
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				connBleByMacAddress(item) {
+					this.macAddress = item.macAddress;
+					this.loadingDialog.showModal();
+					this.loadingMsg = 'Connecting Bluetooth device';
+					window.WebViewJavascriptBridge.callHandler(
+						'connBleByMacAddress', item.macAddress,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				initBleData() {
+					window.WebViewJavascriptBridge.callHandler(
+						'initBleData', this.macAddress,
+						function(responseData) {
+							console.info("initBleData:" + responseData);
+						}
+					);
+				},
+				initServiceBleData() {
+					let data={};
+					data.serviceName="ATT";//ATT/STS/DIA/CMD
+					data.macAddress="AB-SS-CC-AA-XX";
+					window.WebViewJavascriptBridge.callHandler(
+						'initServiceBleData', data,
+						function(responseData) {
+							console.info("initServiceBleData:" + responseData);
+						}
+					);
+				},
+
+
+				readBleCharacteristic() {
+					window.WebViewJavascriptBridge.callHandler(
+						'readBleCharacteristic', this.characteristicRead,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				writeBleCharacteristic() {
+					window.WebViewJavascriptBridge.callHandler(
+						'writeBleCharacteristic', this.characteristicWrite,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+
+				getScannedDevices() {
+					window.WebViewJavascriptBridge.callHandler(
+						'getScannedDevices', "",
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+				toastMsg(msg) {
+					window.WebViewJavascriptBridge.callHandler(
+						'toastMsg', msg,
+						function(responseData) {
+							console.info(responseData);
+						}
+					);
+				},
+
+
+
+
+				/////////////////////////////////JS Call Android:  end
+
+				//JS注册事件监听
+				connectWebViewJavascriptBridge(callback) {
+					if (window.WebViewJavascriptBridge) {
+						callback(WebViewJavascriptBridge)
+					} else {
+						document.addEventListener(
+							'WebViewJavascriptBridgeReady',
+							function() {
+								callback(WebViewJavascriptBridge)
+							},
+							false
+						);
+					}
+				}
+
+			}
+
+		};
+		Vue.createApp(App).mount('#app');
+	</script>
+	<style>
+		/* 弹窗样式 */
+		dialog {
+			width: 300px;
+			padding: 20px;
+			border: none;
+			border-radius: 10px;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+			text-align: center;
+		}
+
+		/* 加载动画样式 */
+		.loader {
+			border: 8px solid #f3f3f3;
+			border-top: 8px solid #3498db;
+			border-radius: 50%;
+			width: 50px;
+			height: 50px;
+			animation: spin 2s linear infinite;
+			margin: 0 auto;
+		}
+
+		@keyframes spin {
+			0% {
+				transform: rotate(0deg);
+			}
+
+			100% {
+				transform: rotate(360deg);
+			}
+		}
+	</style>
+	</body>
+</html>

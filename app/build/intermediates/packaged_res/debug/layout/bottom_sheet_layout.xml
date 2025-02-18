@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/shape_bottom_sheet_dialog">
+
+    <TextView
+        android:id="@+id/choose_photo"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="Select from phone album"
+        android:textSize="15sp"
+        android:textColor="#191919"
+        android:gravity="center"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#F5F5F5"/>
+    <TextView
+        android:id="@+id/choose_camera"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="Open camera to take photos"
+        android:textSize="15sp"
+        android:textColor="#191919"
+        android:gravity="center"/>
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="10dp"
+        android:background="#F5F5F5"/>
+    <TextView
+        android:id="@+id/cancel"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="Cancel"
+        android:textSize="15sp"
+        android:textColor="#191919"
+        android:gravity="center"/>
+
+</LinearLayout>

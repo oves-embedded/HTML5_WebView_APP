@@ -1,0 +1,36 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.example.myapplication.app-mergeDebugResources-49:/values-en/values-en.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Bob\\.gradle\\caches\\transforms-3\\c3a8cfc339af37b8db9b8a227e1aafd7\\transformed\\jetified-scanplus-2.12.0.300\\res\\values-en\\values-en.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,102,165,226,292,369,424,483",
+                        "endColumns": "46,62,60,65,76,54,58,46",
+                        "endOffsets": "97,160,221,287,364,419,478,525"
+                    },
+                    "to": {
+                        "startLines": "6,7,8,9,10,11,12,13",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "294,341,404,465,531,608,663,722",
+                        "endColumns": "46,62,60,65,76,54,58,46",
+                        "endOffsets": "336,399,460,526,603,658,717,764"
+                    }
+                },
+                {
+                    "source": "C:\\Users\\Bob\\.gradle\\caches\\transforms-3\\e3e1bb543ba64a1385831b0309c6b521\\transformed\\jetified-BaseRecyclerViewAdapterHelper-3.0.4\\res\\values-en\\values-en.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,122,178,241",
+                        "endColumns": "66,55,62,52",
+                        "endOffsets": "117,173,236,289"
+                    }
+                }
+            ]
+        }
+    ]
+}

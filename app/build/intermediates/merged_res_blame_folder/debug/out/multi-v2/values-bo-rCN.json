@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.example.myapplication.app-mergeDebugResources-49:/values-bo-rCN/values-bo-rCN.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Bob\\.gradle\\caches\\transforms-3\\c3a8cfc339af37b8db9b8a227e1aafd7\\transformed\\jetified-scanplus-2.12.0.300\\res\\values-bo-rCN\\values-bo-rCN.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,129,219,365,528,582,641,702,785,901,956,1015,1073,1186,1337,1427",
+                        "endColumns": "73,89,145,162,53,58,60,82,115,54,58,57,112,150,89,127",
+                        "endOffsets": "124,214,360,523,577,636,697,780,896,951,1010,1068,1181,1332,1422,1550"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.example.myapplication.app-mergeDebugResources-49:/values-b+my+Qaag/values-b+my+Qaag.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Bob\\.gradle\\caches\\transforms-3\\c3a8cfc339af37b8db9b8a227e1aafd7\\transformed\\jetified-scanplus-2.12.0.300\\res\\values-b+my+Qaag\\values-b+my+Qaag.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,129,206,339,491,538,601,662,728,805,860,919,966,1058,1170,1253",
+                        "endColumns": "73,76,132,151,46,62,60,65,76,54,58,46,91,111,82,102",
+                        "endOffsets": "124,201,334,486,533,596,657,723,800,855,914,961,1053,1165,1248,1351"
+                    }
+                }
+            ]
+        }
+    ]
+}
