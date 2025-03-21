@@ -336,48 +336,58 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                                     bleDeviceUtil.initService(finalServiceName, new InitBleServiceDataCallBack() {
                                         @Override
                                         public void onProgress(int total, int progress, CharacteristicDomain domain) {
-                                            Map<String, Object> map = new HashMap<>();
-                                            map.put("total", total);
-                                            map.put("progress", progress);
-                                            map.put("data", domain);
-                                            map.put("macAddress", bleDeviceUtil.getBluetoothDevice().getAddress());
-                                            bridgeWebView.callHandler("bleInitServiceDataOnProgressCallBack", gson.toJson(map), new CallBackFunction() {
+                                            runOnUiThread(new Runnable() {
                                                 @Override
-                                                public void onCallBack(String data) {
+                                                public void run() {
+                                                    Map<String, Object> map = new HashMap<>();
+                                                    map.put("total", total);
+                                                    map.put("progress", progress);
+                                                    map.put("data", domain);
+                                                    map.put("macAddress", bleDeviceUtil.getBluetoothDevice().getAddress());
+                                                    bridgeWebView.callHandler("bleInitServiceDataOnProgressCallBack", gson.toJson(map), new CallBackFunction() {
+                                                        @Override
+                                                        public void onCallBack(String data) {
 
+                                                        }
+                                                    });
                                                 }
                                             });
                                         }
 
                                         @Override
                                         public void onComplete(ServicesPropertiesDomain domain) {
-                                            ServicesPropertiesDto servicesPropertiesDto = new ServicesPropertiesDto();
-                                            servicesPropertiesDto.setUuid(domain.getUuid());
-                                            servicesPropertiesDto.setServiceNameEnum(domain.getServiceNameEnum());
-                                            servicesPropertiesDto.setServiceProperty(domain.getServiceProperty());
-
-                                            Collection<CharacteristicDomain> values1 = domain.getCharacterMap().values();
-                                            for (CharacteristicDomain characteristicDomain : values1) {
-                                                CharacteristicDto characteristicDto = new CharacteristicDto();
-                                                characteristicDto.setDesc(characteristicDomain.getDesc());
-                                                characteristicDto.setUuid(characteristicDomain.getUuid());
-                                                characteristicDto.setDescriptors(new ArrayList<>(characteristicDomain.getDescMap().values()));
-                                                characteristicDto.setName(characteristicDomain.getName());
-                                                characteristicDto.setServiceUuid(characteristicDomain.getServiceUuid());
-                                                characteristicDto.setProperties(characteristicDomain.getProperties());
-                                                characteristicDto.setRealVal(characteristicDomain.getRealVal());
-                                                characteristicDto.setValType(characteristicDomain.getValType());
-                                                characteristicDto.setValues(characteristicDomain.getValues());
-                                                if (servicesPropertiesDto.getCharacteristicList() == null) {
-                                                    servicesPropertiesDto.setCharacteristicList(new ArrayList<>());
-                                                }
-                                                servicesPropertiesDto.getCharacteristicList().add(characteristicDto);
-                                            }
-
-                                            bridgeWebView.callHandler("bleInitServiceDataOnCompleteCallBack", gson.toJson(servicesPropertiesDto), new CallBackFunction() {
+                                            runOnUiThread(new Runnable() {
                                                 @Override
-                                                public void onCallBack(String data) {
+                                                public void run() {
+                                                    ServicesPropertiesDto servicesPropertiesDto = new ServicesPropertiesDto();
+                                                    servicesPropertiesDto.setUuid(domain.getUuid());
+                                                    servicesPropertiesDto.setServiceNameEnum(domain.getServiceNameEnum());
+                                                    servicesPropertiesDto.setServiceProperty(domain.getServiceProperty());
 
+                                                    Collection<CharacteristicDomain> values1 = domain.getCharacterMap().values();
+                                                    for (CharacteristicDomain characteristicDomain : values1) {
+                                                        CharacteristicDto characteristicDto = new CharacteristicDto();
+                                                        characteristicDto.setDesc(characteristicDomain.getDesc());
+                                                        characteristicDto.setUuid(characteristicDomain.getUuid());
+                                                        characteristicDto.setDescriptors(new ArrayList<>(characteristicDomain.getDescMap().values()));
+                                                        characteristicDto.setName(characteristicDomain.getName());
+                                                        characteristicDto.setServiceUuid(characteristicDomain.getServiceUuid());
+                                                        characteristicDto.setProperties(characteristicDomain.getProperties());
+                                                        characteristicDto.setRealVal(characteristicDomain.getRealVal());
+                                                        characteristicDto.setValType(characteristicDomain.getValType());
+                                                        characteristicDto.setValues(characteristicDomain.getValues());
+                                                        if (servicesPropertiesDto.getCharacteristicList() == null) {
+                                                            servicesPropertiesDto.setCharacteristicList(new ArrayList<>());
+                                                        }
+                                                        servicesPropertiesDto.getCharacteristicList().add(characteristicDto);
+                                                    }
+
+                                                    bridgeWebView.callHandler("bleInitServiceDataOnCompleteCallBack", gson.toJson(servicesPropertiesDto), new CallBackFunction() {
+                                                        @Override
+                                                        public void onCallBack(String data) {
+
+                                                        }
+                                                    });
                                                 }
                                             });
 
@@ -385,10 +395,15 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
 
                                         @Override
                                         public void onFailure(String error) {
-                                            bridgeWebView.callHandler("bleInitServiceDataFailureCallBack", error, new CallBackFunction() {
+                                            runOnUiThread(new Runnable() {
                                                 @Override
-                                                public void onCallBack(String data) {
+                                                public void run() {
+                                                    bridgeWebView.callHandler("bleInitServiceDataFailureCallBack", error, new CallBackFunction() {
+                                                        @Override
+                                                        public void onCallBack(String data) {
 
+                                                        }
+                                                    });
                                                 }
                                             });
                                         }

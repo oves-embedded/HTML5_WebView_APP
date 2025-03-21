@@ -71,6 +71,8 @@
 			<button style="width: 200px;height: 50px;margin-top: 10px;"@click="this.stopLocationListener">stopLocationListener</button>
 			<button style="width: 200px;height: 50px;margin-top: 10px;"@click="this.getLastLocation">getLastLocation</button>
 			
+			<button style="width: 200px;height: 50px;margin-top: 10px;"@click="this.initServiceBleData">initServiceBleData</button>
+			
 
 		</div>
 	</body>
@@ -168,15 +170,15 @@
 						responseCallback(macAddress);
 
 						
-						let data={};
-						data.serviceName="ATT";//ATT/STS/DIA/CMD
-						data.macAddress="AB-SS-CC-AA-XX";
-						window.WebViewJavascriptBridge.callHandler(
-							'initServiceBleData', data,
-							function(responseData) {
-								console.info("initServiceBleData:" + responseData);
-							}
-						);
+						// let data={};
+						// data.serviceName="ATT";//ATT/STS/DIA/CMD
+						// data.macAddress="FF:23:12:07:00:01";
+						// window.WebViewJavascriptBridge.callHandler(
+						// 	'initServiceBleData', data,
+						// 	function(responseData) {
+						// 		console.info("initServiceBleData:" + responseData);
+						// 	}
+						// );
 						
 					});
 					
@@ -290,8 +292,8 @@
 				},
 				initServiceBleData(serviceName) {
 					let data={};
-					data.serviceName=serviceName;//ATT/STS/DIA/CMD
-					data.macAddress="AB-SS-CC-AA-XX";
+					data.serviceName="ATT";//ATT/STS/DIA/CMD/xx
+					data.macAddress="FF:23:12:07:00:01";
 					window.WebViewJavascriptBridge.callHandler(
 						'initServiceBleData', data,
 						function(responseData) {
