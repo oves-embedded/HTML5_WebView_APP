@@ -108,7 +108,6 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         initView();
         initWebView();
-        registerCommMethod();
         registerMethod();
         registerCommMethod();
         initPermissions();
