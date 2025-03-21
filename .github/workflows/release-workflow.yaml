@@ -1,60 +1,116 @@
-name: Build and Publish APK
-
+name: OV APK CI/CD for Building and Releasing Artifacts to S3 and Packages
 on:
   push:
-    branches:
-      - master
+    branches: [ master ]
+    tags: [ "v*" ]
 
 jobs:
   build:
+    name: 🔨 Build gradle Project
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Set up JDK
-        uses: actions/setup-java@v2
+      - name: Checkout Code
+        uses: actions/checkout@v4.2.2
+      - name: Set Up JDK 11
+        uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
-          java-version: '11'
+          distribution: "corretto"
+          java-version: "11"
+      - name: Make Gradle Executable
+        run: chmod +x ./gradlew
+      - name: Build with Gradle
+        run: ./gradlew build --stacktrace
 
-      - name: Change wrapper permissions
+  lint-check:
+    name: 🔍 Linting
+    runs-on: ubuntu-latest
+    needs: [ build ]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4.2.2
+      - name: Make Gradle Executable
+        run: chmod +x ./gradlew
+      - name: Lint Check
+        run: ./gradlew lint
+      - name: Generate lint report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report.html
+          path: app/build/reports/lint-result-debug.html
+
+  generate-release-apk:
+    name: ⚙ Generate Release APK
+    needs: [ build,lint-check ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4.2.2
+      - name: Set Up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "11"
+      - name: Make Gradle Executable
         run: chmod +x ./gradlew
 
-      - name: Build APK
-        run: ./gradlew assembleRelease
+      - name: Build Release APK
+        run: ./gradle assembleRelease --stacktrace
 
-      - name: Generate Release Notes
-        id: release_notes
-        run: |
-          echo "Generating release notes..."
-          # Get the latest tag
-          LAST_TAG=$(git describe --tags --abbrev=0 || echo "v0.0.0")
-          # Generate release notes from commits since last tag
-          RELEASE_NOTES=$(git log "$LAST_TAG"..HEAD --pretty=format:'* %s')
-          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
-          echo "$RELEASE_NOTES" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+      - name: Upload Release APK
+        uses: actions/upload-artifiact@v4.6.0
+        with:
+          name: OVES App
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          gitReleaseNotes: true
 
-      - name: Create and Push Tag
-        id: create_tag
-        run: |
-          # Generate the new tag in the format yyyy-mm-dd-hh-mm
-          NEW_TAG=$(date +'%Y-%m-%d-%H-%M')
-          git tag "$NEW_TAG"
-          git push origin "$NEW_TAG"
-          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+  create-releases:
+    name: 🎉 Create release
+    needs: [ generate-release-apk ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APK from build
+        uses: actions/download-artifact@v4.1.8
+        with:
+          name: OVES APK
+
+      - name: Get latest tag pushed
+        id: tag
+        uses: 32teeth/action-github-tag@v1
+        with:
+            numbers_only: true
+      - name: Use the latest tag pushed
+        run: echo ${{steps.tag.outputs.tag}}
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1.1.4
+        env:
+          GITHUB_TOKEN: ${{secrets.G_TOKEN}}
+        with:
+          tag_name: v${{steps.tag.outputs.tag}}
+          release_name: v${{steps.tag.outputs.tag}}
+
+      - name: Upload Release APK
+        id: upload_release_asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{secrets.G_TOKEN}}
+        with:
+          upload_url: ${{steps.create_release.outputs.upload_url}}
+          asset_path: app/build/outputs/apk/app-release-unsigned.apk
+          gitReleaseNotes: true
+          asset_name: OVES App.apk
+          asset_content_type: application/vnd.android.package-archive
 
       - name: Publish to GitHub Packages
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
         run: |
           apk_path=$(find app/build/outputs/apk/release -name "*.apk")
-          gh release create "$NEW_TAG" "$apk_path" --title "Release $NEW_TAG" --notes "${{ env.RELEASE_NOTES }}"
+          gh release create "${{steps.tag.outputs.tag}}" "$apk_path" --title "Release v${{steps.tag.outputs.tag}}" --generate-notes
 
       - name: Upload APK to S3
-        uses: jakejarvis/s3-sync-action@master
+        uses: jakejarvis/s3-sync-action@v0.5.1
         with:
           args: --acl public-read --follow-symlinks
         env:
