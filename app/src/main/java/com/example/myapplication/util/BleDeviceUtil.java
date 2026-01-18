@@ -23,12 +23,15 @@ import com.example.myapplication.constants.DataConvert;
 import com.example.myapplication.constants.Result;
 import com.example.myapplication.entity.CharacteristicDomain;
 import com.example.myapplication.entity.DescriptorDomain;
+import com.example.myapplication.entity.ProductTypeConfig;
 import com.example.myapplication.entity.ServicesPropertiesDomain;
 import com.example.myapplication.entity.event.BleStatus;
 import com.example.myapplication.entity.event.EventBusMsg;
 import com.example.myapplication.enums.DeviceConnStatEnum;
 import com.example.myapplication.enums.ServiceNameEnum;
+import com.example.myapplication.thread.ThreadPool;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -47,8 +50,6 @@ import java.util.concurrent.TimeUnit;
 
 public class BleDeviceUtil {
 
-    private ThreadPoolExecutor executor = new ThreadPoolExecutor(1, 2, 60, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10));
-
     /**
      * Created by dsr on 2023/10/11.
      */
@@ -62,6 +63,8 @@ public class BleDeviceUtil {
     private int maxCharacteristicCount = 0;
     // 使用StringBuilder替代StringBuffer提升性能（单线程环境）
     private StringBuilder notifyBuff = new StringBuilder();
+    // 标记是否使用了缓存配置（如果使用了配置，跳过onServicesDiscovered中的遍历）
+    private boolean usedCachedConfig = false;
 
     public BleDeviceUtil(BluetoothDevice bluetoothDevice, Context context) {
         this.bluetoothDevice = bluetoothDevice;
@@ -97,6 +100,7 @@ public class BleDeviceUtil {
     @SuppressLint("MissingPermission")
     public synchronized DeviceConnStatEnum connectGatt() throws Exception {
         if (serviceDataDtoMap == null) throw new Exception("connectGatt");
+        usedCachedConfig = false; // 重置标志，新连接开始时默认未使用缓存
         countDownLatch = new CountDownLatch(1);
         //autoConnect==false,表示立即发起连接，否则等蓝牙空闲才会连接
         bluetoothDevice.connectGatt(context, false, bluetoothGattCallback, BluetoothDevice.TRANSPORT_AUTO);
@@ -116,6 +120,93 @@ public class BleDeviceUtil {
             countDownLatch.await(TIME_OUT, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * 使用缓存配置快速构建 serviceDataDtoMap
+     * 避免每次连接都遍历Service和Characteristic
+     * 
+     * @param config 产品类型配置
+     */
+    private void buildServiceDataFromConfig(ProductTypeConfig config) {
+        if (config == null || config.getServices() == null) {
+            return;
+        }
+
+        serviceDataDtoMap.clear();
+        maxCharacteristicCount = 0;
+
+        for (ProductTypeConfig.ServiceConfig serviceConfig : config.getServices().values()) {
+            ServicesPropertiesDomain serviceDomain = new ServicesPropertiesDomain();
+            serviceDomain.setUuid(serviceConfig.getServiceUUID());
+            serviceDomain.setServiceProperty(serviceConfig.getServiceProperty());
+            serviceDomain.setServiceNameEnum(serviceConfig.getServiceNameEnumValue());
+
+            Map<String, CharacteristicDomain> characteristicMap = new ConcurrentHashMap<>();
+
+            if (serviceConfig.getCharacteristics() != null) {
+                for (ProductTypeConfig.CharacteristicConfig charConfig : serviceConfig.getCharacteristics().values()) {
+                    maxCharacteristicCount++;
+                    
+                    CharacteristicDomain charDomain = new CharacteristicDomain();
+                    charDomain.setUuid(charConfig.getCharacteristicUUID());
+                    charDomain.setName(charConfig.getName());
+                    charDomain.setValType(charConfig.getValType());
+                    charDomain.setDesc(charConfig.getDesc());
+                    charDomain.setProperties(charConfig.getProperties());
+                    // 优先使用配置中的serviceUuid，如果没有则使用serviceConfig的UUID
+                    charDomain.setServiceUuid(charConfig.getServiceUuid() != null ? charConfig.getServiceUuid() : serviceConfig.getServiceUUID());
+                    
+                    // 恢复enable标志（从配置中恢复，避免重复计算）
+                    charDomain.setEnableWrite(charConfig.isEnableWrite());
+                    charDomain.setEnableRead(charConfig.isEnableRead());
+                    charDomain.setEnableIndicate(charConfig.isEnableIndicate());
+                    charDomain.setEnableNotify(charConfig.isEnableNotify());
+                    charDomain.setEnableWriteNoResp(charConfig.isEnableWriteNoResp());
+                    
+                    // 如果properties不为空但enable标志未设置，则通过properties计算（兼容旧数据）
+                    if (charConfig.getProperties() != null && !charConfig.isEnableRead() && !charConfig.isEnableWrite()) {
+                        setCharacteristicProperties(charDomain, charConfig.getProperties());
+                    }
+
+                    // 构建Descriptor Map
+                    Map<String, DescriptorDomain> descMap = new ConcurrentHashMap<>();
+                    if (charConfig.getDescriptorUUIDs() != null) {
+                        for (String descUUID : charConfig.getDescriptorUUIDs()) {
+                            DescriptorDomain descDomain = new DescriptorDomain();
+                            descDomain.setUuid(descUUID);
+                            descMap.put(descUUID, descDomain);
+                        }
+                    }
+                    charDomain.setDescMap(descMap);
+
+                    characteristicMap.put(charConfig.getCharacteristicUUID(), charDomain);
+                }
+            }
+
+            serviceDomain.setCharacterMap(characteristicMap);
+            serviceDataDtoMap.put(serviceConfig.getServiceUUID(), serviceDomain);
+        }
+
+        LogUtil.debug("ServiceData built from config, productType: " + config.getProductType() + ", characteristics count: " + maxCharacteristicCount);
+    }
+
+    /**
+     * 如果是首次连接该产品类型，保存配置
+     */
+    private void saveConfigIfNeeded() {
+        String deviceName = bluetoothDevice.getName();
+        String productType = ProductTypeConfigManager.extractProductType(deviceName);
+        
+        if (productType != null) {
+            ProductTypeConfig existingConfig = ProductTypeConfigManager.getConfig(context, productType);
+            if (existingConfig == null && serviceDataDtoMap != null && !serviceDataDtoMap.isEmpty()) {
+                // 首次连接，从当前 serviceDataDtoMap 构建配置并保存
+                ProductTypeConfig newConfig = ProductTypeConfigManager.buildConfigFromServiceData(productType, serviceDataDtoMap);
+                ProductTypeConfigManager.saveConfig(context, productType, newConfig);
+                LogUtil.debug("Config saved for productType: " + productType);
+            }
         }
     }
 
@@ -151,7 +242,60 @@ public class BleDeviceUtil {
         }
     }
 
+    /**
+     * 深度克隆 serviceDataDtoMap（使用 Gson 序列化和反序列化）
+     */
+    private Map<String, ServicesPropertiesDomain> cloneServiceDataDtoMap(Map<String, ServicesPropertiesDomain> source) {
+        try {
+            Gson gson = new Gson();
+            String json = gson.toJson(source);
+            java.lang.reflect.Type type = new TypeToken<Map<String, ServicesPropertiesDomain>>(){}.getType();
+            return gson.fromJson(json, type);
+        } catch (Exception e) {
+            LogUtil.error("Failed to clone serviceDataDtoMap: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public synchronized void initData(InitBleDataCallBack callBack) {
+        try {
+            // 如果使用了缓存配置且模板不为空，先返回默认数据
+            if (usedCachedConfig && serviceDataDtoMap != null && !serviceDataDtoMap.isEmpty()) {
+                // 克隆 serviceDataDtoMap 作为默认数据立即返回
+                Map<String, ServicesPropertiesDomain> defaultData = cloneServiceDataDtoMap(serviceDataDtoMap);
+                if (defaultData != null) {
+                    // 立即返回默认数据
+                    callBack.onComplete(defaultData);
+                    LogUtil.debug("Returned default data from cached config, starting async initialization");
+                } else {
+                    // 克隆失败，直接使用原数据（安全起见）
+                    LogUtil.debug("Clone failed, using original data");
+                    callBack.onComplete(serviceDataDtoMap);
+                }
+                
+                // 异步执行真实的初始化（读取实际值）
+                ThreadPool.getExecutor().execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        initDataAsync(callBack);
+                    }
+                });
+                return;
+            }
+            
+            // 未使用缓存配置，执行正常的同步初始化流程
+            initDataSync(callBack);
+        } catch (Exception e) {
+            e.printStackTrace();
+            callBack.onFailure(e.getMessage());
+        }
+    }
+
+    /**
+     * 异步初始化数据（用于使用缓存配置时）
+     */
+    private synchronized void initDataAsync(InitBleDataCallBack callBack) {
         try {
             Collection<ServicesPropertiesDomain> values = serviceDataDtoMap.values();
             int totalCount = 0;
@@ -175,10 +319,73 @@ public class BleDeviceUtil {
                     callBack.onProgress(totalCount, current, characteristicDomain);
                 }
             }
+            // 异步初始化完成后，更新缓存模板
+            updateConfigAfterInit();
+            
+            // 再次调用 onComplete 返回更新后的数据
+            callBack.onComplete(serviceDataDtoMap);
+            LogUtil.debug("Async initialization completed, data updated");
+        } catch (Exception e) {
+            e.printStackTrace();
+            callBack.onFailure(e.getMessage());
+        }
+    }
+
+    /**
+     * 同步初始化数据（用于未使用缓存配置时）
+     */
+    private synchronized void initDataSync(InitBleDataCallBack callBack) {
+        try {
+            Collection<ServicesPropertiesDomain> values = serviceDataDtoMap.values();
+            int totalCount = 0;
+            int current = 0;
+            for (ServicesPropertiesDomain servicesPropertiesDomain : values) {
+                totalCount += servicesPropertiesDomain.getCharacterMap().values().size();
+            }
+            for (ServicesPropertiesDomain servicesPropertiesDomain : values) {
+                Map<String, CharacteristicDomain> characterMap = servicesPropertiesDomain.getCharacterMap();
+                Collection<CharacteristicDomain> chValues = characterMap.values();
+                String serviceUUID = servicesPropertiesDomain.getUuid();
+                for (CharacteristicDomain characteristicDomain : chValues) {
+                    String chUUID = characteristicDomain.getUuid();
+                    Map<String, DescriptorDomain> descMap = characteristicDomain.getDescMap();
+                    Collection<DescriptorDomain> descValues = descMap.values();
+                    for (DescriptorDomain descriptorDomain : descValues) {
+                        readDescriptor(serviceUUID, chUUID, descriptorDomain.getUuid());
+                    }
+                    readCharacteristic(serviceUUID, chUUID);
+                    current++;
+                    callBack.onProgress(totalCount, current, characteristicDomain);
+                }
+            }
+            // 同步初始化完成后，更新缓存模板（如果是首次连接）
+            updateConfigAfterInit();
+            
             callBack.onComplete(serviceDataDtoMap);
         } catch (Exception e) {
             e.printStackTrace();
             callBack.onFailure(e.getMessage());
+        }
+    }
+
+    /**
+     * 在初始化完成后更新配置模板
+     * 当读取了实际的Descriptor和Characteristic数据后，更新缓存中的配置
+     */
+    private void updateConfigAfterInit() {
+        try {
+            String deviceName = bluetoothDevice.getName();
+            String productType = ProductTypeConfigManager.extractProductType(deviceName);
+            
+            if (productType != null && serviceDataDtoMap != null && !serviceDataDtoMap.isEmpty()) {
+                // 重新构建配置并保存（此时已包含从Descriptor读取的name、valType、desc等信息）
+                ProductTypeConfig updatedConfig = ProductTypeConfigManager.buildConfigFromServiceData(productType, serviceDataDtoMap);
+                ProductTypeConfigManager.saveConfig(context, productType, updatedConfig);
+                LogUtil.debug("Config template updated after initialization for productType: " + productType);
+            }
+        } catch (Exception e) {
+            LogUtil.error("Failed to update config after init: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -432,8 +639,25 @@ public class BleDeviceUtil {
             LogUtil.debug("BluetoothGattCallback onConnectionStateChange:" + newState);
             if (newState == BluetoothGattServer.STATE_CONNECTED) {
                 connected = DeviceConnStatEnum.CONNECTED;
-                gatt.discoverServices();
                 bluetoothGatt = gatt;
+                
+                // 尝试使用缓存配置快速构建 serviceDataDtoMap
+                String deviceName = bluetoothDevice.getName();
+                String productType = ProductTypeConfigManager.extractProductType(deviceName);
+                
+                if (productType != null) {
+                    ProductTypeConfig config = ProductTypeConfigManager.getConfig(context, productType);
+                    if (config != null) {
+                        // 使用缓存配置构建 serviceDataDtoMap
+                        buildServiceDataFromConfig(config);
+                        usedCachedConfig = true; // 标记已使用缓存配置
+                        LogUtil.debug("Using cached config for productType: " + productType);
+                        // 使用配置时，仍然需要 discoverServices 来验证服务是否存在
+                        // 但不需要等待遍历完成
+                    }
+                }
+                
+                gatt.discoverServices();
             } else {//蓝牙断开
                 connected = DeviceConnStatEnum.DISCONNECTED;
                 bluetoothGatt = null;
@@ -448,6 +672,31 @@ public class BleDeviceUtil {
             //可以开始进行service读写了
             LogUtil.debug("BluetoothGattCallback onServicesDiscovered:" + status);
             if (status == BluetoothGatt.GATT_SUCCESS) {
+                
+                // 如果已使用缓存配置，跳过遍历（但需要验证配置是否有效）
+                if (usedCachedConfig) {
+                    LogUtil.debug("Using cached config, skip service discovery iteration");
+                    // 验证配置是否与实际设备匹配（可选，简单检查Service数量）
+                    List<BluetoothGattService> services = gatt.getServices();
+                    if (services != null) {
+                        int matchedServices = 0;
+                        for (BluetoothGattService service : services) {
+                            if (ServiceNameEnum.contain(service.getUuid().toString()) 
+                                    && serviceDataDtoMap.containsKey(service.getUuid().toString())) {
+                                matchedServices++;
+                            }
+                        }
+                        LogUtil.debug("Config validation: matched " + matchedServices + " services");
+                    }
+                    // 首次连接后保存配置的逻辑移动到后面
+                    saveConfigIfNeeded();
+                    if (countDownLatch != null) countDownLatch.countDown();
+                    try {
+                        setMtu(64);
+                    } catch (Exception e) {
+                    }
+                    return;
+                }
 
                 List<BluetoothGattService> services = gatt.getServices();
                 if (services != null && services.size() > 0) {
@@ -503,6 +752,10 @@ public class BleDeviceUtil {
                         }
                     }
                 }
+                
+                // 如果是首次连接该产品类型，遍历完成后保存配置
+                saveConfigIfNeeded();
+                
                 if (countDownLatch != null) countDownLatch.countDown();
                 try {
                     setMtu(64);
@@ -653,7 +906,6 @@ public class BleDeviceUtil {
             countDownLatch = null;
             serviceDataDtoMap = null;
             bluetoothGattCallback = null;
-            executor.shutdownNow();
 
         } catch (Exception e) {
             e.printStackTrace();

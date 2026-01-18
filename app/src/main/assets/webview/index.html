@@ -34,12 +34,12 @@
 				<button style="width: 200px;height: 50px;"
 					@click="this.connBleByMacAddress">connBleByMacAddress</button>
 			</div>
-            <div
-                    style="width: 100%;height: 50px;display: flex; flex-direction: row;justify-content: center;align-items: center;margin-top: 10px;">
-                <input v-model="macAddress" style="width: 200px;height: 50px;" placeholder="please input macAddress" />
-                <button style="width: 200px;height: 50px;"
-                        @click="this.disconnBleByMacAddress">disconnBleByMacAddress</button>
-            </div>
+			<div
+				style="width: 100%;height: 50px;display: flex; flex-direction: row;justify-content: center;align-items: center;margin-top: 10px;">
+				<input v-model="macAddress" style="width: 200px;height: 50px;" placeholder="please input macAddress" />
+				<button style="width: 200px;height: 50px;"
+					@click="this.disconnBleByMacAddress">disconnBleByMacAddress</button>
+			</div>
 			<button style="width: 200px;height: 50px;margin-top: 10px;"
 				@click="this.choosePicture">choosePicture</button>
 
@@ -82,6 +82,9 @@
 
 			<button style="width: 200px;height: 50px;margin-top: 10px;"
 				@click="this.initServiceBleData">initServiceBleData</button>
+			<button style="width: 200px;height: 50px;margin-top: 10px;"
+				@click="this.readBleCharacteristicByNames">readBleCharacteristicByNames</button>
+			
 
 			<button style="width: 200px;height: 50px;margin-top: 10px;" @click="this.readContacts">readContacts</button>
 			<button style="width: 200px;height: 50px;margin-top: 10px;"
@@ -123,6 +126,7 @@
 						value: "",
 						macAddress: "",
 					},
+					characteristicNames: ["gpfc", "pckc", "opid"],
 					mainConfig: {
 						//"barBackgroundColor": "#A3A6A1",
 						"itemBackgroundColor": "#ffffff",
@@ -283,6 +287,8 @@
 					bridge.registerHandler("startOtaUpgradeCompleteCallback", function(data, responseCallback) {
 						console.info(data);
 					});
+
+
 					/////////////////////////////////
 				})
 
@@ -358,6 +364,48 @@
 						}
 					);
 				},
+
+				readBleCharacteristicByNames() {
+					// 解析输入的name字符串（逗号分隔）
+					let names = this.characteristicNames;
+
+					if (names.length === 0) {
+						window.WebViewJavascriptBridge.callHandler(
+							'toastMsg', '请输入至少一个characteristic name',
+							function(responseData) {
+								console.info(responseData);
+							}
+						);
+						return;
+					}
+
+					let data = {
+						macAddress: this.macAddress,
+						names: names
+					};
+
+					window.WebViewJavascriptBridge.callHandler(
+						'readBleCharacteristicByNames', JSON.stringify(data),
+						function(responseData) {
+							console.info('readBleCharacteristicByNames response:', responseData);
+							try {
+								let result = JSON.parse(responseData);
+								if (result.code === 200 && result.data) {
+									console.info('Total count:', result.data.totalCount);
+									console.info('Success count:', result.data.successCount);
+									console.info('Fail count:', result.data.failCount);
+									console.info('Results:', result.data.results);
+									if (result.data.notFoundNames && result.data.notFoundNames.length > 0) {
+										console.warn('Not found names:', result.data.notFoundNames);
+									}
+								}
+							} catch (e) {
+								console.error('Parse response error:', e);
+							}
+						}
+					);
+				},
+
 				writeBleCharacteristic() {
 					window.WebViewJavascriptBridge.callHandler(
 						'writeBleCharacteristic', this.characteristicWrite,
@@ -607,11 +655,11 @@
 					);
 				},
 
-				startOtaUpgrade(){
-					let data={};
-					data.fileUrl="http://xxx:xx/xxx.hex16";
-					data.macAddress="AA:BB:CC:DD:XX";
-					data.secretKey="0000000002";
+				startOtaUpgrade() {
+					let data = {};
+					data.fileUrl = "http://xxx:xx/xxx.hex16";
+					data.macAddress = "AA:BB:CC:DD:XX";
+					data.secretKey = "0000000002";
 					window.WebViewJavascriptBridge.callHandler(
 						'startOtaUpgrade', "",
 						function(responseData) {
@@ -619,7 +667,7 @@
 						}
 					);
 				},
-				stopOtaUpgrade(){
+				stopOtaUpgrade() {
 					window.WebViewJavascriptBridge.callHandler(
 						'stopOtaUpgrade', "",
 						function(responseData) {

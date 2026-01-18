@@ -726,6 +726,125 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
             }
         });
 
+        bridgeWebView.registerHandler("readBleCharacteristicByNames", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                String macAddress = null;
+                List<String> names = null;
+                try {
+                    JSONObject jsonObject = new JSONObject(data);
+                    macAddress = jsonObject.getString("macAddress");
+                    // 获取 names 数组
+                    if (jsonObject.has("names") && !jsonObject.isNull("names")) {
+                        org.json.JSONArray namesArray = jsonObject.getJSONArray("names");
+                        names = new ArrayList<>();
+                        for (int i = 0; i < namesArray.length(); i++) {
+                            String name = namesArray.getString(i);
+                            if (!TextUtils.isEmpty(name)) {
+                                names.add(name);
+                            }
+                        }
+                    }
+                    if (TextUtils.isEmpty(macAddress) || names == null || names.isEmpty()) {
+                        function.onCallBack(gson.toJson(Result.fail(PARAMETER_ERROR, "macAddress and names array are required")));
+                        return;
+                    }
+                } catch (Exception e) {
+                    function.onCallBack(gson.toJson(Result.fail(FAIL.getCode(), e.getMessage(), false)));
+                    return;
+                }
+                
+                //JS传递给Android
+                if (bleService != null) {
+                    BleDeviceUtil bleDeviceUtil = bleService.getBleDeviceUtil();
+                    if (bleDeviceUtil != null && bleDeviceUtil.getConnectStat() == DeviceConnStatEnum.CONNECTED) {
+                        String currentMacAddress = bleDeviceUtil.getBluetoothDevice().getAddress();
+                        if (!currentMacAddress.equals(macAddress)) {
+                            function.onCallBack(gson.toJson(Result.fail(BLE_MAC_ADDRESS_NOT_MATCH, false)));
+                            return;
+                        }
+
+                        // 在后台线程执行读取操作
+                        List<String> finalNames = names;
+                        ThreadPool.getExecutor().execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    // 根据 name 查找对应的 CharacteristicDomain
+                                    Map<String, ServicesPropertiesDomain> serviceDataDtoMap = bleDeviceUtil.getServiceDataDtoMap();
+                                    if (serviceDataDtoMap == null || serviceDataDtoMap.isEmpty()) {
+                                        BaseWebViewActivity.this.runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                function.onCallBack(gson.toJson(Result.fail(BLE_NOT_CONNECTED, "Service data not initialized")));
+                                            }
+                                        });
+                                        return;
+                                    }
+
+                                    // 构建 name -> (serviceUUID, characteristicUUID) 的映射
+                                    Map<String, Map<String, String>> nameToUuidMap = new HashMap<>();
+                                    for (ServicesPropertiesDomain serviceDomain : serviceDataDtoMap.values()) {
+                                        String serviceUUID = serviceDomain.getUuid();
+                                        Map<String, CharacteristicDomain> characterMap = serviceDomain.getCharacterMap();
+                                        if (characterMap != null) {
+                                            for (CharacteristicDomain charDomain : characterMap.values()) {
+                                                String charName = charDomain.getName();
+                                                if (!TextUtils.isEmpty(charName)) {
+                                                    Map<String, String> uuidMap = new HashMap<>();
+                                                    uuidMap.put("serviceUUID", serviceUUID);
+                                                    uuidMap.put("characteristicUUID", charDomain.getUuid());
+                                                    nameToUuidMap.put(charName, uuidMap);
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // 读取每个 name 对应的 characteristic，只返回成功读取的 CharacteristicDomain 列表
+                                    List<CharacteristicDomain> characteristicList = new ArrayList<>();
+                                    
+                                    for (String name : finalNames) {
+                                        Map<String, String> uuidMap = nameToUuidMap.get(name);
+                                        if (uuidMap != null) {
+                                            String serviceUUID = uuidMap.get("serviceUUID");
+                                            String characteristicUUID = uuidMap.get("characteristicUUID");
+                                            
+                                            Result<CharacteristicDomain> readResult = bleDeviceUtil.readCharacteristic(serviceUUID, characteristicUUID);
+                                            
+                                            // 只添加成功读取的 characteristic
+                                            if (readResult.success() && readResult.getRespData() != null) {
+                                                characteristicList.add(readResult.getRespData());
+                                            }
+                                        }
+                                    }
+
+                                    // 直接返回 CharacteristicDomain 数组
+                                    BaseWebViewActivity.this.runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            function.onCallBack(gson.toJson(Result.ok(characteristicList)));
+                                        }
+                                    });
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                    BaseWebViewActivity.this.runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            function.onCallBack(gson.toJson(Result.fail(FAIL.getCode(), e.getMessage(), false)));
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    } else {
+                        function.onCallBack(gson.toJson(Result.fail(BLE_NOT_CONNECTED, false)));
+                    }
+                } else {
+                    function.onCallBack(gson.toJson(Result.fail(BLE_SERVICE_NOT_INIT, false)));
+                }
+            }
+        });
+
 
         bridgeWebView.registerHandler("startQrCodeScan", new
 
