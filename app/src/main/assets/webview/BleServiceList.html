@@ -9,7 +9,7 @@
 
 	<body style="width: 100%;height:100%;background-color: #000000;">
 			<div id="app"
-				style= display: flex;flex-direction: column;flex-wrap: wrap;justify-content: center;align-items: center;justify-items: center;">
+				style= "display: flex;flex-direction: column;flex-wrap: wrap;justify-content: center;align-items: center;justify-items: center;">
 				<div v-for="(item,index) in serviceAttrList"
 					style="width: 100%; display: flex;flex-direction: column;align-items: flex-start;background-color: #ffffff;margin-top:20px;">
 					<div style="color: blue;">{{item.serviceNameEnum}}</div>
@@ -27,7 +27,7 @@
 			data() {
 				return {
 					serviceAttrList:[],
-					macAddress:'',
+					macAddress:'FF:25:09:02:40:CF',
 				}
 			},
 			mounted() {},

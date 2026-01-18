@@ -10,11 +10,12 @@ import com.orhanobut.logger.Logger;
 
 public class MyApplication extends Application {
 
-    private static MyApplication INSTANCE = new MyApplication();
+    private static MyApplication INSTANCE;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        INSTANCE = this;
         // 初始化吐司工具类
         Toaster.init(this, new WhiteToastStyle());
         Logger.addLogAdapter(new AndroidLogAdapter());

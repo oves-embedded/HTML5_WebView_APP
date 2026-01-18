@@ -23,6 +23,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Log;
@@ -98,9 +99,6 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
     private Uri takePhotoUri;
 
     private boolean SERVICE_BIND = false;
-
-
-    private GpsService gpsService;
 
 
     @Override
@@ -270,41 +268,115 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
             @Override
             public void handler(String macAddress, CallBackFunction function) {
                 //JS传递给Android
-                BluetoothAdapter defaultAdapter = BluetoothAdapter.getDefaultAdapter();
-                if (defaultAdapter != null) {
-                    if (!defaultAdapter.isEnabled()) {
-                        function.onCallBack(gson.toJson(Result.fail(BLE_IS_NOT_ENABLED, false)));
-                        return;
-                    }
-                } else {
-                    function.onCallBack(gson.toJson(Result.fail(BLE_NOT_SUPPORTED, false)));
-                    return;
-                }
-                if (bleService != null) {
-                    boolean b = bleService.getBleDeviceInfoMap().containsKey(macAddress);
-                    if (b) {
-                        function.onCallBack(gson.toJson(Result.ok(true)));
-                    } else {
-                        function.onCallBack(gson.toJson(Result.fail(BLE_MAC_ADDRESS_NOT_MATCH, false)));
-                    }
-                    ThreadPool.getExecutor().execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                BleDeviceUtil bleDeviceUtil = bleService.connectBle(macAddress);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                                bridgeWebView.callHandler("print", e.getMessage(), new CallBackFunction() {
-                                    @Override
-                                    public void onCallBack(String data) {
+                // 请求蓝牙权限
+                XXPermissions.with(BaseWebViewActivity.this)
+                        .permission(Permission.BLUETOOTH_SCAN)
+                        .permission(Permission.BLUETOOTH_CONNECT)
+                        .permission(Permission.BLUETOOTH_ADVERTISE)
+                        .permission(Permission.ACCESS_FINE_LOCATION)
+                        .permission(Permission.ACCESS_COARSE_LOCATION)
+                        .interceptor(new PermissionInterceptor())
+                        .request(new OnPermissionCallback() {
+                            @Override
+                            public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
+                                if (!allGranted) {
+                                    function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR, "Permission denied")));
+                                    return;
+                                }
+
+                                // 权限授予后，执行连接逻辑
+                                BluetoothAdapter defaultAdapter = BluetoothAdapter.getDefaultAdapter();
+                                if (defaultAdapter != null) {
+                                    if (!defaultAdapter.isEnabled()) {
+                                        function.onCallBack(gson.toJson(Result.fail(BLE_IS_NOT_ENABLED, false)));
+                                        return;
                                     }
-                                });
+                                } else {
+                                    function.onCallBack(gson.toJson(Result.fail(BLE_NOT_SUPPORTED, false)));
+                                    return;
+                                }
+                                if (bleService != null) {
+                                    boolean b = bleService.getBleDeviceInfoMap().containsKey(macAddress);
+                                    if (b) {
+                                        function.onCallBack(gson.toJson(Result.ok(true)));
+                                    } else {
+                                        function.onCallBack(gson.toJson(Result.fail(BLE_MAC_ADDRESS_NOT_MATCH, false)));
+                                    }
+                                    ThreadPool.getExecutor().execute(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            try {
+                                                BleDeviceUtil bleDeviceUtil = bleService.connectBle(macAddress);
+                                            } catch (Exception e) {
+                                                e.printStackTrace();
+                                                bridgeWebView.callHandler("print", e.getMessage(), new CallBackFunction() {
+                                                    @Override
+                                                    public void onCallBack(String data) {
+                                                    }
+                                                });
+                                            }
+                                        }
+                                    });
+                                } else {
+                                    function.onCallBack(gson.toJson(Result.fail(BLE_SERVICE_NOT_INIT, false)));
+                                }
                             }
-                        }
-                    });
-                } else {
-                    function.onCallBack(gson.toJson(Result.fail(BLE_SERVICE_NOT_INIT, false)));
-                }
+
+                            @Override
+                            public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
+                                function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR, "Permission denied")));
+                            }
+                        });
+            }
+        });
+
+        bridgeWebView.registerHandler("disconnBleByMacAddress", new BridgeHandler() {
+            @Override
+            public void handler(String macAddress, CallBackFunction function) {
+                //JS传递给Android
+                // 请求蓝牙权限
+                XXPermissions.with(BaseWebViewActivity.this)
+                        .permission(Permission.BLUETOOTH_SCAN)
+                        .permission(Permission.BLUETOOTH_CONNECT)
+                        .permission(Permission.BLUETOOTH_ADVERTISE)
+                        .permission(Permission.ACCESS_FINE_LOCATION)
+                        .permission(Permission.ACCESS_COARSE_LOCATION)
+                        .interceptor(new PermissionInterceptor())
+                        .request(new OnPermissionCallback() {
+                            @Override
+                            public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
+                                if (!allGranted) {
+                                    function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR, "Permission denied")));
+                                    return;
+                                }
+
+                                // 权限授予后，执行断开连接逻辑
+                                if (bleService != null) {
+                                    BleDeviceUtil bleDeviceUtil = bleService.getBleDeviceUtil();
+                                    if (bleDeviceUtil != null && bleDeviceUtil.getConnectStat() == DeviceConnStatEnum.CONNECTED) {
+                                        String currentMacAddress = bleDeviceUtil.getBluetoothDevice().getAddress();
+                                        // 检查MAC地址是否匹配（如果提供的话）
+                                        if (macAddress != null && !macAddress.isEmpty() && !currentMacAddress.equals(macAddress)) {
+                                            function.onCallBack(gson.toJson(Result.fail(BLE_MAC_ADDRESS_NOT_MATCH, "Connected device MAC address does not match")));
+                                            return;
+                                        }
+                                        // 断开连接
+                                        bleDeviceUtil.destroy();
+                                        function.onCallBack(gson.toJson(Result.ok(true)));
+                                    } else {
+                                        // 未连接或已断开
+                                        function.onCallBack(gson.toJson(Result.fail(BLE_NOT_CONNECTED, "BLE device is not connected")));
+                                    }
+                                } else {
+                                    function.onCallBack(gson.toJson(Result.fail(BLE_SERVICE_NOT_INIT, false)));
+                                }
+                            }
+
+                            @Override
+                            public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
+                                function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR, "Permission denied")));
+                            }
+                        });
             }
         });
 
@@ -1153,6 +1225,93 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
             }
         });
 
+        bridgeWebView.registerHandler("readContacts", new BridgeHandler() {
+            @Override
+            public void handler(String data, CallBackFunction function) {
+                // 请求读取联系人权限
+                XXPermissions.with(BaseWebViewActivity.this)
+                        .permission(Permission.READ_CONTACTS)
+                        .interceptor(new PermissionInterceptor())
+                        .request(new OnPermissionCallback() {
+                            @Override
+                            public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
+                                if (!allGranted) {
+                                    function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR, "Permission denied")));
+                                    return;
+                                }
+                                
+                                // 在后台线程读取联系人
+                                ThreadPool.getExecutor().execute(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        List<Map<String, String>> contactsList = readContactsFromDevice();
+                                        BaseWebViewActivity.this.runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                function.onCallBack(gson.toJson(Result.ok(contactsList)));
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+
+                            @Override
+                            public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
+                                function.onCallBack(gson.toJson(Result.fail(PERMISSION_ERROR, "Permission denied")));
+                            }
+                        });
+            }
+        });
+
+    }
+
+    /**
+     * 读取设备联系人列表
+     * @return 联系人列表，每个联系人包含name和phone字段
+     */
+    private List<Map<String, String>> readContactsFromDevice() {
+        List<Map<String, String>> contactsList = new ArrayList<>();
+        Cursor cursor = null;
+        try {
+            // 查询联系人数据
+            cursor = getContentResolver().query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    new String[]{
+                            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                            ContactsContract.CommonDataKinds.Phone.NUMBER
+                    },
+                    null,
+                    null,
+                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+            );
+
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    String name = cursor.getString(cursor.getColumnIndexOrThrow(
+                            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
+                    String phone = cursor.getString(cursor.getColumnIndexOrThrow(
+                            ContactsContract.CommonDataKinds.Phone.NUMBER));
+
+                    // 去除电话号码中的空格、横线等字符
+                    if (phone != null) {
+                        phone = phone.replaceAll("\\s+|-", "");
+                    }
+
+                    Map<String, String> contact = new HashMap<>();
+                    contact.put("name", name != null ? name : "");
+                    contact.put("phone", phone != null ? phone : "");
+                    contactsList.add(contact);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            LogUtil.error("Error reading contacts: " + e.getMessage());
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+        return contactsList;
     }
 
 

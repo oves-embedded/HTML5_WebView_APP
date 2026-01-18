@@ -1,12 +1,15 @@
 package com.example.myapplication.activity;
 
+import android.os.Build;
 import android.text.TextUtils;
 import android.view.ViewGroup;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 
 import com.example.myapplication.MainActivity;
@@ -31,6 +34,7 @@ public class WebViewActivity extends BaseWebViewActivity {
     private static final int EXIT_INTERVAL = 2000; // 2 seconds
     private long lastBackPress = 0;
     private String initialUrl;
+    private OnBackPressedCallback onBackPressedCallback;
 
     @Override
     public void initView() {
@@ -44,20 +48,78 @@ public class WebViewActivity extends BaseWebViewActivity {
 
         bridgeWebView.setHorizontalScrollBarEnabled(false);
 //        bridgeWebView.setVerticalScrollBarEnabled(false);
-        bridgeWebView.getSettings().setUseWideViewPort(true);
-        bridgeWebView.getSettings().setLoadWithOverviewMode(true);
-        bridgeWebView.getSettings().setDomStorageEnabled(true);//开启DOM
-
+        
+        // 获取WebSettings并进行配置
+        WebSettings settings = bridgeWebView.getSettings();
+        
+        // 基础设置
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+        settings.setDomStorageEnabled(true);//开启DOM
+        
         // 允许网页定位
-        bridgeWebView.getSettings().setGeolocationEnabled(true);
-//        // 允许网页弹对话框
-        bridgeWebView.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
-//        // 加快网页加载完成的速度，等页面完成再加载图片
-//        bridgeWebView.getSettings().setLoadsImagesAutomatically(true);
-//        // 设置支持javascript// 本地 DOM 存储（解决加载某些网页出现白板现象）
-        bridgeWebView.getSettings().setJavaScriptEnabled(true);
+        settings.setGeolocationEnabled(true);
+        // 允许网页弹对话框
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        // 设置支持javascript
+        settings.setJavaScriptEnabled(true);
+        
+        // ========== WebView 基础配置 ==========
+        // 允许访问assets目录（用于加载本地HTML文件和资源）
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        // 允许从file:// URL加载资源（JSBridge需要）
+        settings.setAllowFileAccessFromFileURLs(true);
+        settings.setAllowUniversalAccessFromFileURLs(true);
+        
         // 设置UserAgent
-//        bridgeWebView.getSettings().setUserAgentString(bridgeWebView.getSettings().getUserAgentString() + "app");
+//        settings.setUserAgentString(settings.getUserAgentString() + "app");
+        
+        // 初始化返回键处理（使用新的OnBackPressedDispatcher API替代废弃的onBackPressed）
+        initBackPressHandler();
+    }
+    
+    /**
+     * 初始化返回键处理（使用OnBackPressedDispatcher替代废弃的onBackPressed方法）
+     */
+    private void initBackPressHandler() {
+        onBackPressedCallback = new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                handleBackPressed();
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, onBackPressedCallback);
+    }
+    
+    /**
+     * 处理返回键逻辑（原onBackPressed的业务逻辑）
+     */
+    private void handleBackPressed() {
+        if (bridgeWebView == null) {
+            finish();
+            return;
+        }
+
+        // Check if current URL is the initial URL
+        String currentUrl = bridgeWebView.getUrl();
+        if (currentUrl != null && currentUrl.equals(initialUrl)) {
+            // We're at the initial URL, implement double-back to exit
+            if (System.currentTimeMillis() - lastBackPress > EXIT_INTERVAL) {
+                Toaster.show("Press back again to exit");
+                lastBackPress = System.currentTimeMillis();
+            } else {
+                finish();
+            }
+        }
+        // Handle normal back navigation
+        else if (bridgeWebView.canGoBack()) {
+            bridgeWebView.goBack();
+        }
+        // No more pages to go back to
+        else {
+            finish();
+        }
     }
 
     private void createWebViewCacheDir() {
@@ -83,13 +145,8 @@ public class WebViewActivity extends BaseWebViewActivity {
                 .request(new OnPermissionCallback() {
                     @Override
                     public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
-                        if (allGranted) {
-                            // All permissions granted: Initialize or reload the WebView
-                            initWebView();
-                        } else {
-                            // Show an alert or handle partial permission denial
-//                            Toast.makeText(MainActivity.class, "Location permission is required for this feature.", Toast.LENGTH_SHORT).show();
-                        }
+                        // 权限授予后不需要重新加载WebView，因为WebView已在BaseWebViewActivity.onCreate()中初始化
+                        // initWebView() 和 registerCommMethod() 已在onCreate中按顺序调用完成
                     }
 
                     @Override
@@ -127,11 +184,15 @@ public class WebViewActivity extends BaseWebViewActivity {
 
         // Load the URL passed from FirstActivity
         String url = getIntent().getStringExtra("url");
-        if (TextUtils.isEmpty(url)) {
-            bridgeWebView.loadUrl("file:///android_asset/webview/index.html");
-        } else {
-            bridgeWebView.loadUrl(url);
-        }
+        initialUrl = "file:///android_asset/webview/index.html";
+        bridgeWebView.loadUrl(initialUrl);
+//        if (TextUtils.isEmpty(url)) {
+//            initialUrl = "file:///android_asset/webview/index.html";
+//            bridgeWebView.loadUrl(initialUrl);
+//        } else {
+//            initialUrl = url;
+//            bridgeWebView.loadUrl(initialUrl);
+//        }
     }
 
     public void registerMethod() {
@@ -139,35 +200,12 @@ public class WebViewActivity extends BaseWebViewActivity {
     }
 
     @Override
-    public void onBackPressed() {
-        if (bridgeWebView == null) {
-            super.onBackPressed();
-            return;
-        }
-
-        // Check if current URL is the initial URL
-        String currentUrl = bridgeWebView.getUrl();
-        if (currentUrl != null && currentUrl.equals(initialUrl)) {
-            // We're at the initial URL, implement double-back to exit
-            if (System.currentTimeMillis() - lastBackPress > EXIT_INTERVAL) {
-                Toaster.show("Press back again to exit");
-                lastBackPress = System.currentTimeMillis();
-            } else {
-                super.onBackPressed();
-            }
-        }
-        // Handle normal back navigation
-        else if (bridgeWebView.canGoBack()) {
-            bridgeWebView.goBack();
-        }
-        // No more pages to go back to
-        else {
-            super.onBackPressed();
-        }
-    }
-
-    @Override
     protected void onDestroy() {
+        // 移除OnBackPressedCallback回调
+        if (onBackPressedCallback != null) {
+            onBackPressedCallback.remove();
+        }
+        
         if (bridgeWebView != null) {
             // Clear WebView data
             bridgeWebView.loadDataWithBaseURL(null, "", "text/html", "utf-8", null);

@@ -17,6 +17,7 @@ import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -33,18 +34,14 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.example.myapplication.constants.Result;
-import com.example.myapplication.constants.RetCode;
 import com.example.myapplication.entity.BleDeviceInfo;
 import com.example.myapplication.entity.MqttConfig;
 import com.example.myapplication.entity.event.EventBusMsg;
 import com.example.myapplication.enums.DeviceConnStatEnum;
 import com.example.myapplication.enums.EventBusEnum;
-import com.example.myapplication.thread.ThreadPool;
 import com.example.myapplication.util.BleDeviceUtil;
 import com.example.myapplication.util.LogUtil;
 import com.example.myapplication.util.MqttClientUtil;
-import com.example.myapplication.util.SharedPreferencesUtils;
 import com.google.gson.Gson;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
@@ -58,11 +55,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class BleService extends Service implements MqttCallback ,LocationListener{
+public class BleService extends Service implements MqttCallback, LocationListener {
     private LocationManager locationManager;
     private Map<String, BluetoothDevice> bleDeviceMap = new ConcurrentHashMap<>();
     private Map<String, BleDeviceInfo> bleDeviceInfoMap = new ConcurrentHashMap<>();
-    private Map<String,Double>gpsMap=new ConcurrentHashMap<>();
+    private Map<String, Double> gpsMap = new ConcurrentHashMap<>();
     private BluetoothAdapter bluetoothAdapter;
 
     //low power ble
@@ -85,13 +82,13 @@ public class BleService extends Service implements MqttCallback ,LocationListene
         super.onCreate();
         initBleConfig();
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        gpsMap.put("longitude",0.00d);
-        gpsMap.put("latitude",0.00d);
+        gpsMap.put("longitude", 0.00d);
+        gpsMap.put("latitude", 0.00d);
     }
 
 
-    public boolean connectMqtt(MqttConfig mqttConfig){
-        if(mqttClientUtil!=null){
+    public boolean connectMqtt(MqttConfig mqttConfig) {
+        if (mqttClientUtil != null) {
             try {
                 mqttClientUtil.disConnect();
             } catch (MqttException e) {
@@ -100,9 +97,9 @@ public class BleService extends Service implements MqttCallback ,LocationListene
         }
         mqttClientUtil = new MqttClientUtil(mqttConfig);
         boolean connect = mqttClientUtil.createConnect(BleService.this);
-        if(connect){
+        if (connect) {
             return true;
-        }else{
+        } else {
             return false;
         }
     }
@@ -141,7 +138,7 @@ public class BleService extends Service implements MqttCallback ,LocationListene
 
     @SuppressLint("MissingPermission")
     public void startBleScan(String keyword) {
-        this.bleKeyword=keyword;
+        this.bleKeyword = keyword;
         bleDeviceMap.clear();
         bleDeviceInfoMap.clear();
         if (bluetoothLeScanner == null) {
@@ -149,7 +146,12 @@ public class BleService extends Service implements MqttCallback ,LocationListene
         }
         if (bluetoothLeScanner != null) {
             bluetoothLeScanner.stopScan(scanCallback);
-            bluetoothLeScanner.startScan(scanCallback);
+            // 配置：低延迟模式 (最快发现设备)
+            ScanSettings settings = new ScanSettings.Builder()
+                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                    .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                    .build();
+            bluetoothLeScanner.startScan(null, settings, scanCallback);
         }
     }
 
@@ -213,8 +215,8 @@ public class BleService extends Service implements MqttCallback ,LocationListene
 
     public BleDeviceUtil connectBle(String mac) throws Exception {
         if (bleDeviceUtil != null) {
-                bleDeviceUtil.destroy();
-                bleDeviceUtil = null;
+            bleDeviceUtil.destroy();
+            bleDeviceUtil = null;
         }
         bleIsInit = false;
         BluetoothDevice bleDevice = bleDeviceMap.get(mac);
@@ -249,10 +251,10 @@ public class BleService extends Service implements MqttCallback ,LocationListene
     @Override
     public void messageArrived(String topic, MqttMessage message) throws Exception {
         LogUtil.debug("MqttService==>messageArrived topic:" + topic + ",message:" + new String(message.getPayload()));
-        Map<String,String>map=new HashMap<>();
-        map.put("topic",topic);
-        map.put("message",new String(message.getPayload()));
-        EventBus.getDefault().post(new EventBusMsg<>(MQTT_MSG_ARRIVED,new Gson().toJson(map)));
+        Map<String, String> map = new HashMap<>();
+        map.put("topic", topic);
+        map.put("message", new String(message.getPayload()));
+        EventBus.getDefault().post(new EventBusMsg<>(MQTT_MSG_ARRIVED, new Gson().toJson(map)));
     }
 
     @Override
@@ -273,18 +275,18 @@ public class BleService extends Service implements MqttCallback ,LocationListene
         }
     }
 
-    public void stopGps(){
+    public void stopGps() {
         locationManager.removeUpdates(this);
     }
 
-    public String getLastLocation(){
+    public String getLastLocation() {
         return new Gson().toJson(gpsMap);
     }
 
     @Override
     public void onLocationChanged(@NonNull Location location) {
-        gpsMap.put("longitude",location.getLongitude());
-        gpsMap.put("latitude",location.getLatitude());
+        gpsMap.put("longitude", location.getLongitude());
+        gpsMap.put("latitude", location.getLatitude());
         EventBus.getDefault().post(new EventBusMsg(GPS_CHANGE, new Gson().toJson(gpsMap)));
     }
 

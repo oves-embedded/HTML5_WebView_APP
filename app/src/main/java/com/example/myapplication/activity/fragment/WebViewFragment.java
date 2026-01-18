@@ -24,11 +24,13 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.text.TextUtils;
+import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.TextView;
 
@@ -129,8 +131,30 @@ public class WebViewFragment extends Fragment {
     }
 
     public void initWebView() {
-        bridgeWebView.getSettings().setBuiltInZoomControls(false); //显示放大缩小 controler
+        WebSettings settings = bridgeWebView.getSettings();
+        
+        // 基础设置
+        settings.setBuiltInZoomControls(false); //显示放大缩小 controler
         bridgeWebView.setNetworkAvailable(true);
+        
+        // ========== WebView 安全配置 ==========
+        // 禁止文件访问（防止文件系统暴露）
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        // 禁止从文件URL加载其他文件（防止文件协议XSS攻击）
+        settings.setAllowFileAccessFromFileURLs(false);
+        settings.setAllowUniversalAccessFromFileURLs(false);
+        
+        // 混合内容控制（禁止HTTP内容在HTTPS页面中加载）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        }
+        
+        // 启用安全浏览（Safe Browsing）- Android O及以上
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            settings.setSafeBrowsingEnabled(true);
+        }
+        
         bridgeWebView.setWebViewClient(new BridgeWebViewClient(bridgeWebView) {
             // 修复 页面还没加载完成，注册代码还没初始完成，就调用了callHandle
             @Override
