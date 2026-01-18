@@ -184,15 +184,15 @@ public class WebViewActivity extends BaseWebViewActivity {
 
         // Load the URL passed from FirstActivity
         String url = getIntent().getStringExtra("url");
-        initialUrl = "file:///android_asset/webview/index.html";
-        bridgeWebView.loadUrl(initialUrl);
-//        if (TextUtils.isEmpty(url)) {
-//            initialUrl = "file:///android_asset/webview/index.html";
-//            bridgeWebView.loadUrl(initialUrl);
-//        } else {
-//            initialUrl = url;
-//            bridgeWebView.loadUrl(initialUrl);
-//        }
+//        initialUrl = "file:///android_asset/webview/index.html";
+//        bridgeWebView.loadUrl(initialUrl);
+        if (TextUtils.isEmpty(url)) {
+            initialUrl = "file:///android_asset/webview/index.html";
+            bridgeWebView.loadUrl(initialUrl);
+        } else {
+            initialUrl = url;
+            bridgeWebView.loadUrl(initialUrl);
+        }
     }
 
     public void registerMethod() {

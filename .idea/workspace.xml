@@ -9,12 +9,9 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="93f437de-3c82-4c2c-b55e-c0af06146bf9" name="Changes" comment="提高Scanner速度，新增closeBleUtil">
-      <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
+    <list default="true" id="93f437de-3c82-4c2c-b55e-c0af06146bf9" name="Changes" comment="依赖项提交">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/assets/webview/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/assets/webview/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/example/myapplication/activity/BaseWebViewActivity.java" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/example/myapplication/activity/BaseWebViewActivity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/example/myapplication/util/BleDeviceUtil.java" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/example/myapplication/util/BleDeviceUtil.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/example/myapplication/activity/WebViewActivity.java" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/example/myapplication/activity/WebViewActivity.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -280,7 +277,23 @@
       <option name="project" value="LOCAL" />
       <updated>1768754643382</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="添加根据特征名称读取属性的方法">
+      <option name="closed" value="true" />
+      <created>1768758610259</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1768758610259</updated>
+    </task>
+    <task id="LOCAL-00006" summary="依赖项提交">
+      <option name="closed" value="true" />
+      <created>1768758684574</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1768758684574</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -298,7 +311,9 @@
     <MESSAGE value="initService修复回调异常问题" />
     <MESSAGE value="同步" />
     <MESSAGE value="提高Scanner速度，新增closeBleUtil" />
-    <option name="LAST_COMMIT_MESSAGE" value="提高Scanner速度，新增closeBleUtil" />
+    <MESSAGE value="添加根据特征名称读取属性的方法" />
+    <MESSAGE value="依赖项提交" />
+    <option name="LAST_COMMIT_MESSAGE" value="依赖项提交" />
   </component>
   <component name="play_dynamic_filters_status">
     <option name="appIdToCheckInfo">
