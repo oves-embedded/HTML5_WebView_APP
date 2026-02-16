@@ -71,7 +71,7 @@ jobs:
       - name: Download APK from build
         uses: actions/download-artifact@v4.1.8
         with:
-          name: OVES APK
+          name: OVES App
 
       - name: Get latest tag pushed
         id: tag
