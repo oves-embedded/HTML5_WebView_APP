@@ -68,18 +68,42 @@ jobs:
     needs: [ generate-release-apk ]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0  # Fetch all tags
+
       - name: Download APK from build
         uses: actions/download-artifact@v4.1.8
         with:
           name: OVES App
 
-      - name: Get latest tag pushed
+      - name: Get Latest Tag and Increment
         id: tag
-        uses: 32teeth/action-github-tag@v1.0.7
-        with:
-            numbers_only: true
-      - name: Use the latest tag pushed
-        run: echo ${{steps.tag.outputs.tag}}
+        run: |
+          git fetch --tags
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $latest_tag"
+
+          # Remove 'v' prefix and split version
+          version=${latest_tag#v}
+          IFS='.' read -r major minor patch <<< "$version"
+
+          # Increment patch version
+          patch=$((patch + 1))
+          new_tag="$major.$minor.$patch"
+
+          echo "tag=$new_tag" >> $GITHUB_OUTPUT
+          echo "New tag: v$new_tag"
+
+      - name: Create and Push New Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{steps.tag.outputs.tag}}"
+          git push origin "v${{steps.tag.outputs.tag}}"
+        env:
+          GITHUB_TOKEN: ${{secrets.G_TOKEN}}
 
       - name: Create Release
         id: create_release
@@ -97,17 +121,9 @@ jobs:
           GITHUB_TOKEN: ${{secrets.G_TOKEN}}
         with:
           upload_url: ${{steps.create_release.outputs.upload_url}}
-          asset_path: app/build/outputs/apk/app-release-unsigned.apk
-          gitReleaseNotes: true
+          asset_path: app-release-unsigned.apk
           asset_name: OVES App.apk
           asset_content_type: application/vnd.android.package-archive
-
-      - name: Publish to GitHub Packages
-        env:
-          GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
-        run: |
-          apk_path=$(find app/build/outputs/apk/release -name "*.apk")
-          gh release create "${{steps.tag.outputs.tag}}" "$apk_path" --title "Release v${{steps.tag.outputs.tag}}" --generate-notes
 
       - name: Upload APK to S3
         uses: jakejarvis/s3-sync-action@v0.5.1
@@ -117,4 +133,4 @@ jobs:
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          SOURCE_DIR: app/build/outputs/apk/release
+          SOURCE_DIR: .
