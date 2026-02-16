@@ -15,6 +15,7 @@ import static com.example.myapplication.constants.RetCode.PERMISSION_ERROR;
 import static com.example.myapplication.constants.RetCode.RUNTIME_EXCEPTION;
 import static com.example.myapplication.constants.RetCode.USER_CANCELED_OPERATION;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.content.ContentValues;
 import android.content.DialogInterface;
@@ -36,6 +37,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.RequiresPermission;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -105,6 +108,7 @@ public class WebViewFragment extends Fragment {
         this.contentUrl = url;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -130,6 +134,7 @@ public class WebViewFragment extends Fragment {
         return bridgeWebView;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
     public void initWebView() {
         WebSettings settings = bridgeWebView.getSettings();
         
@@ -261,6 +266,7 @@ public class WebViewFragment extends Fragment {
         });
 
         bridgeWebView.registerHandler("connBleByMacAddress", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
             @Override
             public void handler(String macAddress, CallBackFunction function) {
                 //JS传递给Android
@@ -302,6 +308,7 @@ public class WebViewFragment extends Fragment {
             }
         });
         bridgeWebView.registerHandler("initServiceBleData", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
             @Override
             public void handler(String data, CallBackFunction function) {
                 String serviceName = null, macAddress = null;
@@ -323,6 +330,7 @@ public class WebViewFragment extends Fragment {
                             function.onCallBack(gson.toJson(Result.ok(true)));
                             String finalServiceName = serviceName;
                             ThreadPool.getExecutor().execute(new Runnable() {
+                                @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
                                 @Override
                                 public void run() {
                                     bleDeviceUtil.initService(finalServiceName, new InitBleServiceDataCallBack() {
@@ -410,6 +418,8 @@ public class WebViewFragment extends Fragment {
                         if (address.equals(macAddress)) {
                             function.onCallBack(gson.toJson(Result.ok(true)));
                             ThreadPool.getExecutor().execute(new Runnable() {
+                                @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
+                                @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
                                 @Override
                                 public void run() {
                                     bleDeviceUtil.initData(new InitBleDataCallBack() {
@@ -516,6 +526,7 @@ public class WebViewFragment extends Fragment {
         bridgeWebView.registerHandler("writeBleCharacteristic", new BridgeHandler() {
             String serviceUUID = null, characteristicUUID = null, value = null, macAddress = null;
 
+            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
             @Override
             public void handler(String data, CallBackFunction function) {
                 try {
@@ -542,6 +553,7 @@ public class WebViewFragment extends Fragment {
                             return;
                         }
                         ThreadPool.getExecutor().execute(new Runnable() {
+                            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
                             @Override
                             public void run() {
                                 Result<Void> voidResult = null;
@@ -577,6 +589,7 @@ public class WebViewFragment extends Fragment {
         bridgeWebView.registerHandler("writeBleCharacteristic", new BridgeHandler() {
             String serviceUUID = null, characteristicUUID = null, value = null, macAddress = null;
 
+            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
             @Override
             public void handler(String data, CallBackFunction function) {
                 try {
@@ -604,6 +617,7 @@ public class WebViewFragment extends Fragment {
                             return;
                         }
                         ThreadPool.getExecutor().execute(new Runnable() {
+                            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
                             @Override
                             public void run() {
                                 Result<Void> voidResult = null;
@@ -638,6 +652,7 @@ public class WebViewFragment extends Fragment {
 
 
         bridgeWebView.registerHandler("readBleCharacteristic", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
             @Override
             public void handler(String data, CallBackFunction function) {
                 String serviceUUID = null, characteristicUUID = null, macAddress = null;
@@ -668,6 +683,7 @@ public class WebViewFragment extends Fragment {
                         String finalServiceUUID = serviceUUID;
                         String finalCharacteristicUUID = characteristicUUID;
                         ThreadPool.getExecutor().execute(new Runnable() {
+                            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
                             @Override
                             public void run() {
                                 Result<CharacteristicDomain> characteristicDomainResult = bleDeviceUtil.readCharacteristic(finalServiceUUID, finalCharacteristicUUID);
@@ -736,6 +752,7 @@ public class WebViewFragment extends Fragment {
 //                        .permission(Permission.CAMERA)
 //                        .permission(Permission.READ_EXTERNAL_STORAGE)
                         .permission(Permission.READ_MEDIA_IMAGES).permission(Permission.READ_MEDIA_VIDEO).permission(Permission.READ_MEDIA_AUDIO).interceptor(new PermissionInterceptor()).request(new OnPermissionCallback() {
+                            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
                             @Override
                             public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
                                 if (!allGranted) {
@@ -949,6 +966,7 @@ public class WebViewFragment extends Fragment {
         });
 
         bridgeWebView.registerHandler("mqttPublishMsg", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void handler(String data, CallBackFunction function) {
                 try {
@@ -1079,6 +1097,7 @@ public class WebViewFragment extends Fragment {
 
 
         bridgeWebView.registerHandler("openOcr", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.GINGERBREAD)
             @Override
             public void handler(String data, CallBackFunction function) {
                 try {

@@ -75,3 +75,22 @@
 # ========== AndroidX ==========
 -keep class androidx.** { *; }
 -dontwarn androidx.**
+
+# ========== Huawei HMS Missing Classes ==========
+# These classes are referenced from Huawei HMS libraries but may not be present
+# on all devices. R8 should not fail if they are missing.
+-dontwarn android.telephony.HwTelephonyManager
+-dontwarn com.huawei.android.os.BuildEx$VERSION
+-dontwarn com.huawei.hms.support.hianalytics.HiAnalyticsUtils
+-dontwarn com.huawei.hms.utils.HMSBIInitializer
+-dontwarn com.huawei.libcore.io.ExternalStorageFile
+-dontwarn com.huawei.libcore.io.ExternalStorageFileInputStream
+-dontwarn com.huawei.libcore.io.ExternalStorageFileOutputStream
+-dontwarn com.huawei.libcore.io.ExternalStorageRandomAccessFile
+
+# ========== BouncyCastle Missing Classes ==========
+# BouncyCastle crypto classes that may not be present
+-dontwarn org.bouncycastle.crypto.BlockCipher
+-dontwarn org.bouncycastle.crypto.engines.AESEngine
+-dontwarn org.bouncycastle.crypto.prng.SP800SecureRandom
+-dontwarn org.bouncycastle.crypto.prng.SP800SecureRandomBuilder

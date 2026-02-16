@@ -13,6 +13,7 @@ import static com.example.myapplication.constants.RetCode.PERMISSION_ERROR;
 import static com.example.myapplication.constants.RetCode.RUNTIME_EXCEPTION;
 import static com.example.myapplication.constants.RetCode.USER_CANCELED_OPERATION;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.content.ComponentName;
 import android.content.ContentValues;
@@ -21,6 +22,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.ContactsContract;
@@ -33,6 +35,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.RequiresPermission;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
@@ -277,6 +281,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                         .permission(Permission.ACCESS_COARSE_LOCATION)
                         .interceptor(new PermissionInterceptor())
                         .request(new OnPermissionCallback() {
+                            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
                             @Override
                             public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
                                 if (!allGranted) {
@@ -343,6 +348,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                         .permission(Permission.ACCESS_COARSE_LOCATION)
                         .interceptor(new PermissionInterceptor())
                         .request(new OnPermissionCallback() {
+                            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
                             @Override
                             public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
                                 if (!allGranted) {
@@ -381,6 +387,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
         });
 
         bridgeWebView.registerHandler("initServiceBleData", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
             @Override
             public void handler(String data, CallBackFunction function) {
                 String serviceName = null, macAddress = null;
@@ -402,6 +409,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                             function.onCallBack(gson.toJson(Result.ok(true)));
                             String finalServiceName = serviceName;
                             ThreadPool.getExecutor().execute(new Runnable() {
+                                @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
                                 @Override
                                 public void run() {
                                     bleDeviceUtil.initService(finalServiceName, new InitBleServiceDataCallBack() {
@@ -494,6 +502,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
         });
 
         bridgeWebView.registerHandler("initBleData", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
             @Override
             public void handler(String macAddress, CallBackFunction function) {
                 //JS传递给Android
@@ -504,6 +513,8 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                         if (address.equals(macAddress)) {
                             function.onCallBack(gson.toJson(Result.ok(true)));
                             ThreadPool.getExecutor().execute(new Runnable() {
+                                @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
+                                @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
                                 @Override
                                 public void run() {
                                     bleDeviceUtil.initData(new InitBleDataCallBack() {
@@ -611,6 +622,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
         bridgeWebView.registerHandler("writeBleCharacteristic", new BridgeHandler() {
             String serviceUUID = null, characteristicUUID = null, value = null, macAddress = null;
 
+            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
             @Override
             public void handler(String data, CallBackFunction function) {
                 try {
@@ -637,6 +649,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                             return;
                         }
                         ThreadPool.getExecutor().execute(new Runnable() {
+                            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
                             @Override
                             public void run() {
                                 Result<Void> voidResult = null;
@@ -671,6 +684,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
 
 
         bridgeWebView.registerHandler("readBleCharacteristic", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
             @Override
             public void handler(String data, CallBackFunction function) {
                 String serviceUUID = null, characteristicUUID = null, macAddress = null;
@@ -701,6 +715,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                         String finalServiceUUID = serviceUUID;
                         String finalCharacteristicUUID = characteristicUUID;
                         ThreadPool.getExecutor().execute(new Runnable() {
+                            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
                             @Override
                             public void run() {
                                 Result<CharacteristicDomain> characteristicDomainResult = bleDeviceUtil.readCharacteristic(finalServiceUUID, finalCharacteristicUUID);
@@ -727,6 +742,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
         });
 
         bridgeWebView.registerHandler("readBleCharacteristicByNames", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
             @Override
             public void handler(String data, CallBackFunction function) {
                 String macAddress = null;
@@ -767,6 +783,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
                         // 在后台线程执行读取操作
                         List<String> finalNames = names;
                         ThreadPool.getExecutor().execute(new Runnable() {
+                            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
                             @Override
                             public void run() {
                                 try {
@@ -896,6 +913,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
 //                        .permission(Permission.CAMERA)
 //                        .permission(Permission.READ_EXTERNAL_STORAGE)
                                 .permission(Permission.READ_MEDIA_IMAGES).permission(Permission.READ_MEDIA_VIDEO).permission(Permission.READ_MEDIA_AUDIO).interceptor(new PermissionInterceptor()).request(new OnPermissionCallback() {
+                                    @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
                                     @Override
                                     public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
                                         if (!allGranted) {
@@ -1105,6 +1123,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
         });
 
         bridgeWebView.registerHandler("mqttPublishMsg", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void handler(String data, CallBackFunction function) {
                 try {
@@ -1233,6 +1252,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
         });
 
         bridgeWebView.registerHandler("openOcr", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.GINGERBREAD)
             @Override
             public void handler(String data, CallBackFunction function) {
                 try {
@@ -1253,6 +1273,7 @@ public abstract class BaseWebViewActivity extends AppCompatActivity {
         });
 
         bridgeWebView.registerHandler("saveImg", new BridgeHandler() {
+            @RequiresApi(api = Build.VERSION_CODES.GINGERBREAD)
             @Override
             public void handler(String data, CallBackFunction function) {
                 try {

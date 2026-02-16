@@ -5,6 +5,7 @@ import static android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY;
 import static com.example.myapplication.enums.EventBusEnum.BLE_CONNECT;
 import static com.example.myapplication.enums.EventBusEnum.BLE_DISCONNECT;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -14,8 +15,11 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattService;
 import android.content.Context;
+import android.os.Build;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.RequiresPermission;
 
 import com.example.myapplication.callback.InitBleDataCallBack;
 import com.example.myapplication.callback.InitBleServiceDataCallBack;
@@ -97,6 +101,7 @@ public class BleDeviceUtil {
      *
      * @return
      */
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @SuppressLint("MissingPermission")
     public synchronized DeviceConnStatEnum connectGatt() throws Exception {
         if (serviceDataDtoMap == null) throw new Exception("connectGatt");
@@ -112,6 +117,7 @@ public class BleDeviceUtil {
         return connected;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @SuppressLint("MissingPermission")
     public synchronized void setMtu(int maxByteSize) throws ExecutionException, InterruptedException {
         bluetoothGatt.requestMtu(maxByteSize);
@@ -195,6 +201,8 @@ public class BleDeviceUtil {
     /**
      * 如果是首次连接该产品类型，保存配置
      */
+    @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private void saveConfigIfNeeded() {
         String deviceName = bluetoothDevice.getName();
         String productType = ProductTypeConfigManager.extractProductType(deviceName);
@@ -210,6 +218,7 @@ public class BleDeviceUtil {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     public synchronized void initService(String serviceName, InitBleServiceDataCallBack callBack) {
         try {
             Collection<ServicesPropertiesDomain> values = serviceDataDtoMap.values();
@@ -258,6 +267,8 @@ public class BleDeviceUtil {
         }
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     public synchronized void initData(InitBleDataCallBack callBack) {
         try {
             // 如果使用了缓存配置且模板不为空，先返回默认数据
@@ -276,6 +287,8 @@ public class BleDeviceUtil {
                 
                 // 异步执行真实的初始化（读取实际值）
                 ThreadPool.getExecutor().execute(new Runnable() {
+                    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+                    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
                     @Override
                     public void run() {
                         initDataAsync(callBack);
@@ -295,6 +308,8 @@ public class BleDeviceUtil {
     /**
      * 异步初始化数据（用于使用缓存配置时）
      */
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     private synchronized void initDataAsync(InitBleDataCallBack callBack) {
         try {
             Collection<ServicesPropertiesDomain> values = serviceDataDtoMap.values();
@@ -334,6 +349,8 @@ public class BleDeviceUtil {
     /**
      * 同步初始化数据（用于未使用缓存配置时）
      */
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     private synchronized void initDataSync(InitBleDataCallBack callBack) {
         try {
             Collection<ServicesPropertiesDomain> values = serviceDataDtoMap.values();
@@ -372,6 +389,8 @@ public class BleDeviceUtil {
      * 在初始化完成后更新配置模板
      * 当读取了实际的Descriptor和Characteristic数据后，更新缓存中的配置
      */
+    @RequiresApi(api = Build.VERSION_CODES.ECLAIR)
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private void updateConfigAfterInit() {
         try {
             String deviceName = bluetoothDevice.getName();
@@ -389,6 +408,7 @@ public class BleDeviceUtil {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @SuppressLint("MissingPermission")
     public synchronized Result<Void> writeCharacteristic(String serviceUUID, String characteristicUUID, String value) throws ExecutionException, InterruptedException {
         ServicesPropertiesDomain servicesPropertiesDomain = serviceDataDtoMap.get(serviceUUID);
@@ -403,6 +423,7 @@ public class BleDeviceUtil {
         return writeCharacteristic(serviceUUID, characteristicUUID, bytes);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @SuppressLint("MissingPermission")
     public synchronized Result<Void> writeCharacteristic(String serviceUUID, String characteristicUUID, byte[] value) throws ExecutionException, InterruptedException {
         notifyBuff.setLength(0); // 使用setLength替代delete提升性能
@@ -432,6 +453,7 @@ public class BleDeviceUtil {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @SuppressLint("MissingPermission")
     public synchronized Result<CharacteristicDomain> readCharacteristic(String serviceUUID, String characteristicUUID) {
         if (isConnected()) {
@@ -460,6 +482,7 @@ public class BleDeviceUtil {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @SuppressLint("MissingPermission")
     public synchronized Result<CharacteristicDomain> setCharacteristicNotification(String serviceUUID, String characteristicUUID, String descriptorUUID, Boolean enable) {
         if (isConnected()) {
@@ -501,6 +524,7 @@ public class BleDeviceUtil {
     /**
      * 启用指令通知
      */
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @SuppressLint("MissingPermission")
     public synchronized Result<CharacteristicDomain> enableIndicateNotification(String serviceUUID, String characteristicUUID, Boolean enable) {
         if (isConnected()) {
@@ -532,6 +556,7 @@ public class BleDeviceUtil {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @SuppressLint("MissingPermission")
     public synchronized Result<DescriptorDomain> readDescriptor(String serviceUUID, String characteristicUUID, String descriptorUUID) {
         if (isConnected()) {
@@ -566,6 +591,7 @@ public class BleDeviceUtil {
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @SuppressLint("MissingPermission")
     public synchronized Result<DescriptorDomain> writeDescriptor(String serviceUUID, String characteristicUUID, String descriptorUUID, byte[] data) {
         if (isConnected()) {
@@ -601,6 +627,7 @@ public class BleDeviceUtil {
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
         /**
          * 物理层改变回调 触发这个方法需要使用gatt.setPreferredPhy()方法设置接收和发送的速率，然后蓝牙设备给我回一个消息，就触发onPhyUpdate（）方法了
@@ -632,6 +659,7 @@ public class BleDeviceUtil {
             LogUtil.debug("BluetoothGattCallback onPhyRead");
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
         @SuppressLint("MissingPermission")
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
@@ -664,6 +692,8 @@ public class BleDeviceUtil {
             }
         }
 
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             super.onServicesDiscovered(gatt, status);
@@ -765,6 +795,7 @@ public class BleDeviceUtil {
 
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
@@ -798,12 +829,14 @@ public class BleDeviceUtil {
             }
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
         @Override
         public void onCharacteristicRead(@NonNull BluetoothGatt gatt, @NonNull BluetoothGattCharacteristic characteristic, @NonNull byte[] value, int status) {
             super.onCharacteristicRead(gatt, characteristic, value, status);
             LogUtil.debug("BluetoothGattCallback onCharacteristicRead2：" + ByteUtil.bytes2HexString(characteristic.getValue()));
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicWrite(gatt, characteristic, status);
@@ -812,6 +845,7 @@ public class BleDeviceUtil {
         }
 
 
+        @RequiresApi(api = Build.VERSION_CODES.KITKAT)
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
@@ -821,6 +855,7 @@ public class BleDeviceUtil {
         }
 
 
+        @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
         @Override
         public void onDescriptorRead(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
             super.onDescriptorRead(gatt, descriptor, status);
@@ -850,6 +885,7 @@ public class BleDeviceUtil {
 
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
         @Override
         public void onDescriptorRead(@NonNull BluetoothGatt gatt, @NonNull BluetoothGattDescriptor descriptor, int status, @NonNull byte[] value) {
             super.onDescriptorRead(gatt, descriptor, status, value);
@@ -858,6 +894,7 @@ public class BleDeviceUtil {
         }
 
 
+        @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
             super.onDescriptorWrite(gatt, descriptor, status);
@@ -896,6 +933,7 @@ public class BleDeviceUtil {
     };
 
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @SuppressLint("MissingPermission")
     public void destroy() {
         try {
